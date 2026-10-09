@@ -225,14 +225,28 @@ def borrower_loan(borrower_id: str, scenario_id: str | None = None):
 @app.get("/api/climate")
 def climate(region: str = Query(default="Nashik"), crop: str = Query(default="Wheat"), as_of: date = Query(default=date(2026, 10, 9))):
     return {"region": region, "crop": crop, "as_of": as_of, "data_mode": "offline_demo_fixture",
-            "weather": {"status": "assumed_scenario_only", "forecast_issued_at": None, "observed_history": None,
-                        "note": "No issued forecast or observed weather fixture is connected; use hypothetical scenario controls."},
-            "crop_calendar": {"status": "assumed_illustrative", "version": "illustrative-v2",
-                              "stages": [{"name": k, "days_after_sowing": list(v)} for k, v in STAGE_WINDOWS.items()]},
+            "weather": {"status": "reanalysis_conditional_by_stage_dates_and_geography", "forecast_issued_at": None,
+                        "operational_forecast": {"status": "unavailable"},
+                        "observed_history": {"status": "conditional_reanalysis", "source_class": "gridded_reanalysis"},
+                        "note": "Scenario assessment aligns historical Pune ERA5 only where declared stage dates and geography overlap; otherwise returns missing coverage. Hypothetical controls remain a separate input class."},
+            "crop_calendar": {"status": "assumed_illustrative", "version": "illustrative-stage-calendar-v3",
+                              "source": "Sage illustrative demo rule; no region-verified crop calendar admitted",
+                              "method": "inclusive fixed days-after-sowing windows clipped to declared harvest date",
+                              "uncertainty": "high; not an agronomic recommendation", "geography": "unverified; not district calibrated",
+                              "timezone": "Asia/Kolkata", "stages": [{"name": k, "days_after_sowing": list(v)} for k, v in STAGE_WINDOWS.items()]},
             "ndvi": {"status": "unavailable", "value": None, "resolution": None},
             "soil_moisture": {"status": "unavailable", "value": None},
             "yield_baseline": {"status": "assumed_illustrative_response"},
             "market_price": {"status": "assumed_demo_input"}}
+
+
+@app.get("/api/crop-calendar")
+def crop_calendar(borrower_id: str = Query(default="B-DEMO-001")):
+    try:
+        result = evaluate_scenario(ScenarioRequest(borrower_id=borrower_id))
+    except KeyError:
+        raise HTTPException(404, "Select a seeded demo borrower")
+    return result["stress"]["crop_calendar"] | {"stages": result["stress"]["crop_stages"]}
 
 
 @app.post("/api/assessments/evaluate", response_model=ScenarioBundle)
@@ -241,9 +255,12 @@ def climate(region: str = Query(default="Nashik"), crop: str = Query(default="Wh
 def scenario(req: ScenarioRequest):
     try:
         result = evaluate_scenario(req)
+        result["snapshot_freshness"] = "current"
+        result["snapshot_stale_reasons"] = []
         save_scenario(result["scenario_id"], req.borrower_id, result["input_hash"], req.model_dump(mode="json"), result)
         return result
     except KeyError: raise HTTPException(404, "Select a seeded demo borrower")
+    except ValueError as exc: raise HTTPException(422, str(exc))
 
 
 @app.post("/api/interventions/evaluate")

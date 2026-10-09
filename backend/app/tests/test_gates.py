@@ -11,7 +11,7 @@ from fastapi.testclient import TestClient
 from app.main import app
 from app.db import _connect, get_borrower_record, get_scenario, save_scenario
 from app.schemas import ScenarioBundle, ScenarioRequest
-from app.services.assessment import BORROWERS, build_dated_ledger, evaluate_scenario, money
+from app.services.assessment import BORROWERS, _daily_reanalysis, _calendar, build_dated_ledger, evaluate_scenario, money
 
 
 class GateVerification(unittest.TestCase):
@@ -90,6 +90,38 @@ class GateVerification(unittest.TestCase):
         self.assertLess(D(flowering['stress']['yield_t_per_ha']), D(planting['stress']['yield_t_per_ha']))
         self.assertNotEqual(flowering['stress']['heat_event']['start_date'], planting['stress']['heat_event']['start_date'])
         self.assertNotEqual(flowering['stress']['stage_stress'], planting['stress']['stage_stress'])
+
+    def test_stage_calendar_provenance_and_weather_cutoff(self):
+        b = dict(BORROWERS['B-DEMO-002'])
+        b['sowing_date'], b['harvest_date'] = date(2015, 6, 1), date(2015, 10, 31)
+        stages = _calendar(b)
+        self.assertTrue(all(date.fromisoformat(x['start_date']) >= b['sowing_date'] and date.fromisoformat(x['end_date']) <= b['harvest_date'] for x in stages))
+        self.assertTrue(all(x['source'] and x['method'] and x['uncertainty'] and x['geography'] and x['version'] for x in stages))
+        self.assertTrue(all(date.fromisoformat(a['end_date']) < date.fromisoformat(c['start_date']) for a,c in zip(stages,stages[1:])))
+        weather = _daily_reanalysis(b, stages, date(2015, 8, 1))
+        self.assertEqual(weather['source_class'], 'reanalysis')
+        self.assertEqual(weather['timezone'], 'Asia/Kolkata')
+        self.assertTrue(weather['future_observations_excluded'])
+        self.assertTrue(all(not x.get('date_end') or x['date_end'] <= date(2015, 8, 1) for x in weather['stages'].values()))
+
+    def test_api_baseline_and_calendar_date_shift_are_reproducible(self):
+        base = {'as_of':'2026-10-09','overrides':{'heatwave_days':4,'heatwave_growth_stage':'flowering'}}
+        baseline = self.client.post('/api/scenarios/evaluate', json=base).json()
+        shifted_req = {'as_of':'2026-10-09','overrides':{'heatwave_days':4,'heatwave_growth_stage':'flowering','heatwave_start_date':'2026-07-01'}}
+        shifted = self.client.post('/api/scenarios/evaluate', json=shifted_req).json()
+        self.assertEqual(baseline['stress']['heat_event']['stage'], 'flowering')
+        self.assertEqual(shifted['stress']['heat_event']['stage'], 'planting')
+        self.assertEqual(baseline['stress']['reanalysis']['status'], 'missing_geography_mismatch')
+        self.assertEqual(baseline['stress']['fin03_inputs']['weather_forecast']['status'], 'hypothetical_scenario')
+        self.assertEqual(baseline['stress']['fin03_inputs']['weather_forecast']['operational_forecast']['status'], 'unavailable')
+        self.assertNotEqual(baseline['stress']['stage_stress'], shifted['stress']['stage_stress'])
+        self.assertNotEqual(baseline['stress']['yield_t_per_ha'], shifted['stress']['yield_t_per_ha'])
+        self.assertEqual(baseline, self.client.post('/api/scenarios/evaluate', json=base).json())
+        projection = shifted['stress']['yield_projection']
+        self.assertEqual(projection['source_class'], 'illustrative_rule')
+        self.assertEqual(projection['unit'], 't/ha')
+        self.assertIn('not_trained_or_calibrated', projection['status'])
+        self.assertEqual(self.client.get('/api/crop-calendar').status_code, 200)
 
     def test_g3_post_due_sale_excluded_and_price_changes_bridge(self):
         stressed = self.evaluate(heatwave_days=4)
@@ -198,7 +230,10 @@ class GateVerification(unittest.TestCase):
         fresh = self.client.post('/api/scenarios/evaluate', json=request).json()
         self.assertNotEqual(fresh['input_hash'], saved['input_hash'])
         reopened = self.client.get('/api/scenarios/' + saved['scenario_id']).json()
-        self.assertEqual(reopened, saved)
+        self.assertEqual({k:v for k,v in reopened.items() if k not in {'snapshot_freshness','snapshot_stale_reasons'}},
+                         {k:v for k,v in saved.items() if k not in {'snapshot_freshness','snapshot_stale_reasons'}})
+        self.assertEqual(reopened['snapshot_freshness'], 'stale')
+        self.assertIn('borrower_profile_changed', reopened['snapshot_stale_reasons'])
         self.assertEqual(reopened['scenario_request']['as_of'], '2026-11-06')
         self.assertEqual(reopened['scenario_request']['overrides']['irrigation_fraction'], 0.8)
         self.assertEqual(reopened['action_status'], 'ineligible')

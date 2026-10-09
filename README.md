@@ -31,12 +31,13 @@ Open `http://127.0.0.1:5173/`. The API and browser app use only loopback/local f
 - `GET /api/borrowers/{borrower_id}`
 - `GET /api/borrowers/{borrower_id}/loan`
 - `GET /api/climate?region=&crop=&as_of=`
+- `GET /api/crop-calendar?borrower_id=...` (dated stage windows and calendar provenance)
 - `POST /api/scenarios/evaluate`
 - `GET /api/scenarios/{scenario_id}`
 - `GET /api/scenarios?limit=50` (saved report catalog)
 - `GET /api/sources`
 
-The scenario endpoint accepts `borrower_id`, `as_of`, `overrides`, and an optional `action_id` (`none`, `reschedule_30d`, or `split_payment`). Its response includes stable input/context hashes, baseline/stress/action assessments, repayment bridge, debt cycle, warnings, source status, and claim scope.
+The scenario endpoint accepts `borrower_id`, `as_of`, `overrides`, and an optional `action_id` (`none`, `reschedule_30d`, or `split_payment`). `overrides.heatwave_start_date` can position a hypothetical heat event by ISO date; the API assigns it to the dated stage window. The response includes stage-aligned daily ERA5 aggregates only when dates and Pune grid geography match, excludes observations after `as_of`, and exposes missing coverage otherwise. Each yield projection is versioned and labeled as an illustrative rule; no real aligned yield rows are admitted. See [`DATA_SOURCES.md`](DATA_SOURCES.md) for the source and limitations.
 
 ## Limitations
 

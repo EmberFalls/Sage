@@ -1,6 +1,6 @@
 # Data sources, provenance and claim audit
 
-Audit state: 2026-10-09. F0 initially retained a three-day Open-Meteo excerpt. F3 now also retains a full, no-auth ERA5 historical-weather response for 2015-06-01 through 2015-10-31. Neither archive is wired into the assessment runtime or establishes a matched real-data season. The existing offline demo remains seeded and synthetic/illustrative.
+Audit state: 2026-10-09. F0 initially retained a three-day Open-Meteo excerpt. F3 also retains the full ERA5 response for 2015-06-01 through 2015-10-31. The full daily series is now conditionally aligned to declared stage windows when both Pune geography and dates overlap, and is cut off at the assessment `as_of`. It is shown as a gridded reanalysis feature only; it does not train or calibrate the illustrative yield rule or establish a joined real-yield season.
 
 ## Pilot scope decision
 
@@ -9,14 +9,14 @@ Use **maize — Pune district, Maharashtra — Kharif 2015** as the single F0 fe
 | Data class | Runtime status | Version / evidence | Permitted claim |
 |---|---|---|---|
 | Borrower, loan, expenses, repayment | Synthetic | Fixture `demo-fixture-2026-10-09.2`, seed `20261009`, [`fixtures.py`](backend/app/services/fixtures.py) | Synthetic example only; no real borrower, contract, or bank outcome |
-| Weather used by assessment | Assumed | `scenario-controls-v1`; no runtime external calls | Hypothetical rainfall/heat scenario only |
-| Open-Meteo historical weather | Full ERA5 response retained; not runtime-ingested | 153 rows retained in `data/raw/open_meteo/pune_kharif_2015_era5.json`; response hash and resolved grid coordinates in [`manifest.yaml`](data/manifest.yaml) | Historical gridded reanalysis near Pune, not district-level, station, field observation or forecast. It is not a yield/weather join. |
-| Crop calendar and stage response | Assumed | `illustrative-v2`; fixture dates/rules | Illustrative crop-stage sensitivity only |
+| Weather used by assessment | Hypothetical input, distinct from evidence | `scenario-controls-v1`; no operational forecast connected | Scenario input only; no issued time or forecast claim |
+| Open-Meteo historical weather | Conditional stage-feature alignment | 153 ERA5 daily rows retained in `data/raw/open_meteo/pune_kharif_2015_era5.json`; response hash and grid coordinates in [`manifest.yaml`](data/manifest.yaml) | Used only if declared geography is Pune and stage dates overlap; local day labels in `Asia/Kolkata`; future dates after `as_of` excluded. Grid values are not farm/station observations and do not drive/calibrate yield response. |
+| Crop calendar and stage response | Assumed | `illustrative-stage-calendar-v3`; stage windows use inclusive days-after-sowing and are clipped to harvest; response rule `stage-response-v3` | Calendar is not region verified; yield response is illustrative, not trained or calibrated |
 | Irrigation | Assumed | Fixture/default or scenario override | Scenario input only |
 | Yield | Assumed | Rule response; no fitted artifact/evaluation set | Illustrative yield estimate; not trained or calibrated |
 | Market price | Assumed | User input/local reference fixture; no verified mandi observation | Hypothetical price change only |
 | NDVI / satellite | Unavailable | No source-backed rows retained | No vegetation observation or satellite insight claim |
-| Soil moisture | Unavailable in app | No source-backed rows retained | No soil observation claim; reanalysis variables are not currently ingested |
+| Soil moisture | Unavailable in app | No source-backed rows retained | No soil observation claim; retained weather archive does not contain the soil input used by the app |
 | Credit performance / repayment frequency | Synthetic / simulated | 21 declared hypothetical paths; no labeled real outcomes | Simulation-conditioned frequency only; not default probability or accuracy |
 
 ## External source review
@@ -42,6 +42,14 @@ Use **maize — Pune district, Maharashtra — Kharif 2015** as the single F0 fe
 - Manifest: `data/manifest.yaml` version 2.
 
 Keep the existing deterministic offline walk-through. A source/model/rule change must receive a new version and document its effect; don't overwrite an old result or imply old snapshots are reproducible with new versions. This freeze records current version strings, not proof of cross-version regression equivalence.
+
+## Dated weather and crop-stage assessment (2026-10-09)
+
+- Runtime engine: `risk-engine-v2-demo.4`; calendar: `illustrative-stage-calendar-v3`; yield response: `stage-response-v3`.
+- `GET /api/crop-calendar?borrower_id=...` returns explicit sowing/harvest dates, inclusive ordered windows, timezone rule, source, method, uncertainty, declared geography, and overlap/out-of-season flags.
+- `POST /api/scenarios/evaluate` accepts optional `overrides.heatwave_start_date`. The event date is assigned to the containing stage; invalid or out-of-window durations return a visible validation error. The Scenario Lab displays stage dates, ERA5 coverage per stage, hypothetical stress per stage, and the event-date control.
+- ERA5 daily totals/means/counts are clipped to each stage and `as_of`; weather dates retain the provider `Asia/Kolkata` calendar label. The current 2026 demo seasons report missing ERA5 coverage instead of substituting 2015 values. Pune 2015 dates can align where configured, but still represent a grid cell.
+- Yield output carries `source_class=illustrative_rule`, rule version, `t/ha`, and limitations. No aligned, admitted real yield rows exist, so no historical yield model is trained or calibrated. ERA5 stage features are evidence context and are not used as fitted predictors.
 
 ## Data quality and upgrade thresholds
 

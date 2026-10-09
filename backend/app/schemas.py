@@ -10,6 +10,7 @@ class Overrides(BaseModel):
     rainfall_change_pct: float = Field(default=0, ge=-100, le=100)
     heatwave_days: int = Field(default=0, ge=0, le=45)
     heatwave_growth_stage: Literal["planting", "vegetative", "flowering", "grain_fill", "harvest"] = "flowering"
+    heatwave_start_date: date | None = None
     market_price_change_pct: float = Field(default=0, ge=-90, le=100)
     irrigation_fraction: float | None = Field(default=None, ge=0, le=1)
     assumed_informal_bridge_inr: float = Field(default=0, ge=0, le=1000000)
