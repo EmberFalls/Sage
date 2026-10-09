@@ -12,3 +12,4 @@ frontend/dist/
 *.py[cod]
 .env
 frontend/.env
+backend/.env
