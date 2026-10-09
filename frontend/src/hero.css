@@ -1,0 +1,983 @@
+/* =========================================================================
+   PhenoCredit — Editorial Hero Section Styling
+   Centered Apple-Style Glassmorphic Island + Cool Fintech Typography + Bounce Animations
+   ========================================================================= */
+
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
+
+:root {
+  --hero-font-serif: 'Instrument Serif', Georgia, serif;
+  --hero-font-display: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
+  --hero-font-mono: 'Space Grotesk', 'Plus Jakarta Sans', monospace;
+  --hero-font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
+
+  --hero-lime: #d8ff36;
+  --hero-lime-glow: rgba(216, 255, 54, 0.45);
+  --hero-ink: #070a07;
+  --hero-near-black: #0c110d;
+  --hero-muted: #546457;
+
+  /* True Apple Glassmorphism */
+  --apple-glass-bg: rgba(255, 255, 255, 0.46);
+  --apple-glass-border: rgba(255, 255, 255, 0.75);
+  --apple-glass-shadow: 0 20px 48px -12px rgba(0, 0, 0, 0.09), 0 1px 0 rgba(255, 255, 255, 0.95) inset;
+
+  --card-glass-bg: rgba(242, 248, 240, 0.52);
+  --card-glass-hover: rgba(246, 252, 244, 0.68);
+  --card-glass-border: rgba(255, 255, 255, 0.82);
+  --card-radius: 26px;
+  --card-shadow: 0 18px 42px -10px rgba(16, 28, 16, 0.12), inset 0 1px 1px rgba(255, 255, 255, 0.9);
+}
+
+/* Base Viewport Container */
+.hero-viewport {
+  position: relative;
+  width: 100%;
+  min-height: 100vh;
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  overflow-x: hidden;
+  font-family: var(--hero-font-body);
+  color: var(--hero-ink);
+  background-color: #e3ece1;
+  box-sizing: border-box;
+}
+
+/* Background Image Layer with precise landscape framing */
+.hero-backdrop {
+  position: absolute;
+  inset: 0;
+  background-image: url('/images/agricultural-hero.jpg');
+  background-size: cover;
+  background-position: center 26%;
+  background-repeat: no-repeat;
+  z-index: 1;
+}
+
+/* Luminous Chartreuse Color Atmosphere Grading */
+.hero-gradient-overlay {
+  position: absolute;
+  inset: 0;
+  background: 
+    linear-gradient(180deg, rgba(223, 255, 88, 0.22) 0%, rgba(244, 245, 233, 0.08) 32%, rgba(0, 0, 0, 0) 65%),
+    radial-gradient(circle at 50% 0%, rgba(223, 255, 88, 0.24) 0%, rgba(223, 255, 88, 0) 65%);
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* =========================================================================
+   CENTERED APPLE-STYLE FLOATING GLASS ISLAND NAVBAR
+   ========================================================================= */
+.hero-nav-wrapper {
+  position: relative;
+  z-index: 30;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  padding: 24px 20px 0;
+  box-sizing: border-box;
+  animation: appleNavSlideDown 0.8s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.hero-apple-navbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 8px 6px 14px;
+  background: var(--apple-glass-bg);
+  -webkit-backdrop-filter: blur(28px) saturate(190%) contrast(105%);
+  backdrop-filter: blur(28px) saturate(190%) contrast(105%);
+  border: 1px solid var(--apple-glass-border);
+  border-radius: 9999px;
+  box-shadow: var(--apple-glass-shadow);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.hero-apple-navbar:hover {
+  background: rgba(255, 255, 255, 0.58);
+  border-color: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 24px 54px -12px rgba(0, 0, 0, 0.13), 0 1px 0 rgba(255, 255, 255, 1) inset;
+}
+
+/* Brand */
+.hero-brand {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  cursor: pointer;
+  user-select: none;
+  text-decoration: none;
+  outline: none;
+}
+
+.hero-brand-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--hero-near-black);
+  color: var(--hero-lime);
+  display: grid;
+  place-items: center;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.18);
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.hero-brand:hover .hero-brand-icon {
+  transform: scale(1.08) rotate(4deg);
+}
+
+.hero-brand-name {
+  font-family: var(--hero-font-display);
+  font-weight: 800;
+  font-size: 16px;
+  letter-spacing: -0.03em;
+  color: var(--hero-ink);
+}
+
+.hero-nav-divider {
+  width: 1px;
+  height: 20px;
+  background: rgba(0, 0, 0, 0.08);
+}
+
+/* Nav Links inside Capsule */
+.hero-nav-links {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.hero-nav-link {
+  border: 0;
+  background: transparent;
+  color: #1a221a;
+  font-family: var(--hero-font-display);
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 7px 14px;
+  border-radius: 9999px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  white-space: nowrap;
+}
+
+.hero-nav-link:hover {
+  background: rgba(255, 255, 255, 0.65);
+  color: var(--hero-ink);
+  transform: translateY(-1px);
+}
+
+.hero-nav-link.active {
+  background: var(--hero-near-black);
+  color: #ffffff;
+  font-weight: 700;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.18);
+}
+
+/* Right Actions */
+.hero-nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.hero-live-pill {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.6);
+  border: 1px solid rgba(220, 232, 222, 0.8);
+  font-family: var(--hero-font-display);
+  font-size: 11px;
+  font-weight: 700;
+  color: #213224;
+}
+
+.hero-live-pulse-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #2e7d32;
+  box-shadow: 0 0 0 3px rgba(46, 125, 50, 0.25);
+  display: inline-block;
+  animation: appleLivePulse 2s infinite ease-in-out;
+}
+
+@keyframes appleLivePulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.2); opacity: 0.75; }
+}
+
+.hero-apple-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 15px;
+  border-radius: 9999px;
+  background: var(--hero-near-black);
+  color: #ffffff;
+  border: 0;
+  font-family: var(--hero-font-display);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+}
+
+.hero-apple-cta:hover {
+  background: #172118;
+  transform: translateY(-1px) scale(1.02);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.26);
+}
+
+/* =========================================================================
+   HERO HEADLINE & VERTICALLY CENTERED BALANCED LAYOUT
+   ========================================================================= */
+.hero-content-wrapper {
+  position: relative;
+  z-index: 10;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(20px, 3.5vh, 48px) 20px clamp(36px, 5.5vh, 68px);
+  max-width: 1400px;
+  margin: auto;
+  width: 100%;
+  text-align: center;
+  box-sizing: border-box;
+}
+
+.hero-headline {
+  font-family: var(--hero-font-serif);
+  font-size: clamp(38px, 4.8vw, 76px);
+  font-weight: 400;
+  line-height: 0.92;
+  letter-spacing: -0.025em;
+  color: var(--hero-ink);
+  margin: 0 0 clamp(20px, 3vh, 32px) 0;
+  text-shadow: 0 1px 3px rgba(255, 255, 255, 0.4);
+  user-select: none;
+  animation: appleHeadlineFade 0.9s cubic-bezier(0.16, 1, 0.3, 1) 0.1s both;
+}
+
+/* =========================================================================
+   COOL FINTECH DASHBOARD CARDS & BOUNCE ENTRANCE ANIMATIONS
+   ========================================================================= */
+.hero-cards-cluster {
+  display: grid;
+  grid-template-columns: 295px 295px;
+  gap: 14px;
+  width: 100%;
+  max-width: 604px;
+  margin: 0 auto;
+  position: relative;
+  z-index: 15;
+  box-sizing: border-box;
+}
+
+.hero-cards-left-col {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: 295px;
+}
+
+.hero-cards-right-col {
+  width: 295px;
+  display: flex;
+}
+
+/* Springy / Bouncy Reload Entrance Animations */
+@keyframes appleCardBounce {
+  0% {
+    opacity: 0;
+    transform: translateY(52px) scale(0.9);
+  }
+  65% {
+    opacity: 1;
+    transform: translateY(-5px) scale(1.018);
+  }
+  85% {
+    transform: translateY(2px) scale(0.995);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.anim-bounce-1 {
+  animation: appleCardBounce 0.85s cubic-bezier(0.34, 1.45, 0.64, 1) 0.22s both;
+}
+
+.anim-bounce-2 {
+  animation: appleCardBounce 0.85s cubic-bezier(0.34, 1.45, 0.64, 1) 0.36s both;
+}
+
+.anim-bounce-3 {
+  animation: appleCardBounce 0.9s cubic-bezier(0.34, 1.45, 0.64, 1) 0.5s both;
+}
+
+/* Shared Card Styling */
+.hero-card {
+  background: var(--card-glass-bg);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid var(--card-glass-border);
+  border-radius: var(--card-radius);
+  padding: 18px 19px;
+  box-shadow: var(--card-shadow);
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+  cursor: pointer;
+  transition: transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.28s ease, background 0.28s ease;
+  box-sizing: border-box;
+  position: relative;
+  overflow: hidden;
+}
+
+.hero-card:hover {
+  transform: translateY(-4px) scale(1.012);
+  box-shadow: 0 24px 50px -10px rgba(16, 30, 16, 0.2), inset 0 1px 1px rgba(255, 255, 255, 1);
+  background: var(--card-glass-hover);
+  border-color: rgba(255, 255, 255, 0.98);
+}
+
+.hero-card-snapshot {
+  height: 154px;
+}
+
+.hero-card-borrower {
+  height: 154px;
+}
+
+.hero-card-impact {
+  height: 322px;
+  flex: 1;
+}
+
+/* Card Header Common */
+.hero-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.hero-card-title-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.hero-card-title {
+  font-family: var(--hero-font-display);
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  color: var(--hero-ink);
+  margin: 0;
+}
+
+.hero-card-subtitle {
+  font-family: var(--hero-font-display);
+  font-size: 8.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--hero-muted);
+  text-transform: uppercase;
+  margin-top: 1.5px;
+}
+
+.hero-card-live-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 9999px;
+  background: rgba(46, 125, 50, 0.12);
+  border: 1px solid rgba(46, 125, 50, 0.22);
+  color: #1b5e20;
+  font-family: var(--hero-font-display);
+  font-size: 8.5px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+}
+
+.hero-pulse-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #2e7d32;
+  box-shadow: 0 0 0 2px rgba(46, 125, 50, 0.3);
+}
+
+.hero-id-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 7px;
+  border-radius: 6px;
+  background: rgba(180, 105, 15, 0.1);
+  border: 1px solid rgba(180, 105, 15, 0.2);
+  color: #874e05;
+  font-family: var(--hero-font-mono);
+  font-size: 9.5px;
+  font-weight: 700;
+}
+
+.hero-gain-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 9999px;
+  background: var(--hero-near-black);
+  color: var(--hero-lime);
+  font-family: var(--hero-font-display);
+  font-size: 9px;
+  font-weight: 800;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+/* =========================================================================
+   CARD A: CLIMATE SNAPSHOT — COOL CIRCULAR DIALS
+   ========================================================================= */
+.hero-snapshot-indicators {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.hero-dial-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.hero-dial-circle {
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.78);
+  border: 1.5px solid rgba(210, 226, 212, 0.85);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.04), inset 0 1px 1px rgba(255, 255, 255, 0.9);
+  position: relative;
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.hero-card:hover .hero-dial-circle {
+  transform: scale(1.05);
+}
+
+.dial-rainfall {
+  border-color: rgba(50, 135, 215, 0.38);
+  background: radial-gradient(circle at 50% 30%, rgba(255, 255, 255, 0.9), rgba(235, 246, 255, 0.8));
+}
+
+.dial-crop {
+  border-color: rgba(46, 165, 80, 0.38);
+  background: radial-gradient(circle at 50% 30%, rgba(255, 255, 255, 0.9), rgba(235, 255, 240, 0.8));
+}
+
+.dial-heat {
+  border-color: rgba(235, 140, 30, 0.38);
+  background: radial-gradient(circle at 50% 30%, rgba(255, 255, 255, 0.9), rgba(255, 248, 235, 0.8));
+}
+
+.dial-icon {
+  margin-bottom: 0;
+}
+
+.icon-rain { color: #1a73e8; }
+.icon-crop { color: #2e7d32; }
+.icon-heat { color: #ea580c; }
+
+.dial-num-wrap {
+  display: flex;
+  align-items: baseline;
+  gap: 1.5px;
+  line-height: 1;
+  margin-top: 1px;
+}
+
+.dial-value {
+  font-family: var(--hero-font-mono);
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--hero-ink);
+  letter-spacing: -0.03em;
+}
+
+.dial-unit {
+  font-family: var(--hero-font-display);
+  font-size: 8px;
+  font-weight: 800;
+  color: #556858;
+}
+
+.dial-label {
+  font-family: var(--hero-font-display);
+  font-size: 8.5px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: #1a241b;
+  margin-top: 5px;
+}
+
+.dial-status-text {
+  font-family: var(--hero-font-display);
+  font-size: 8px;
+  color: #566859;
+  font-weight: 600;
+}
+
+.dial-status-text.text-optimal {
+  color: #2e7d32;
+  font-weight: 700;
+}
+
+/* =========================================================================
+   CARD B: BORROWER OUTLOOK — SLEEK FINTECH METRICS
+   ========================================================================= */
+.hero-borrower-body {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  height: 100%;
+}
+
+.hero-borrower-kpi-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 9px 0 10px;
+}
+
+.hero-shield-emblem {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: var(--hero-near-black);
+  color: var(--hero-lime);
+  display: grid;
+  place-items: center;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.hero-card:hover .hero-shield-emblem {
+  transform: scale(1.06);
+}
+
+.hero-borrower-kpi-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.hero-kpi-micro-label {
+  font-family: var(--hero-font-display);
+  font-size: 8.5px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: var(--hero-muted);
+}
+
+.hero-feasibility-stat {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-top: 1px;
+}
+
+.hero-feasibility-num {
+  font-family: var(--hero-font-mono);
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--hero-ink);
+  letter-spacing: -0.03em;
+  line-height: 1;
+}
+
+.hero-feasibility-badge {
+  font-family: var(--hero-font-display);
+  font-size: 10px;
+  font-weight: 700;
+  color: #2e7d32;
+}
+
+.hero-borrower-meta-strip {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+
+.hero-tag-pill {
+  padding: 3.5px 8px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(215, 228, 218, 0.8);
+  font-family: var(--hero-font-display);
+  font-size: 9px;
+  font-weight: 700;
+  color: #2c3e30;
+}
+
+.hero-tag-pill.highlight-gap {
+  background: rgba(46, 125, 50, 0.12);
+  color: #1b5e20;
+  border-color: rgba(46, 125, 50, 0.28);
+}
+
+/* =========================================================================
+   CARD C: CLIMATE IMPACT — MODERN 4-BAR CHART WITH GLOW & TOOLTIP
+   ========================================================================= */
+.hero-impact-chart {
+  height: 188px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  margin: 12px 0 6px;
+  padding: 26px 4px 0;
+  box-sizing: border-box;
+}
+
+/* Floating Tooltip Callout */
+.hero-chart-callout {
+  position: absolute;
+  top: 0;
+  left: 62.5%;
+  transform: translateX(-50%);
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  animation: appleTooltipPop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) 0.8s both;
+}
+
+@keyframes appleTooltipPop {
+  0% { opacity: 0; transform: translateX(-50%) translateY(10px) scale(0.85); }
+  100% { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+}
+
+.hero-callout-pill {
+  background: #080c08;
+  color: #ffffff;
+  padding: 4px 10px;
+  border-radius: 7px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.28);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  white-space: nowrap;
+}
+
+.hero-callout-tag {
+  color: var(--hero-lime);
+  font-family: var(--hero-font-display);
+  font-size: 7.5px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.hero-callout-title {
+  font-family: var(--hero-font-display);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.hero-callout-pointer {
+  width: 0;
+  height: 0;
+  border-left: 4.5px solid transparent;
+  border-right: 4.5px solid transparent;
+  border-top: 4.5px solid #080c08;
+}
+
+/* 4 Bars Track */
+.hero-bars-track-area {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  height: 142px;
+  padding: 0 4px;
+}
+
+.hero-chart-bar-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: 44px;
+}
+
+.hero-bar-well {
+  height: 120px;
+  width: 32px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  position: relative;
+}
+
+.hero-bar-column {
+  width: 100%;
+  border-radius: 12px;
+  position: relative;
+  display: flex;
+  justify-content: center;
+  transform-origin: bottom center;
+}
+
+@keyframes appleBarGrow {
+  0% { transform: scaleY(0.1); opacity: 0.3; }
+  100% { transform: scaleY(1); opacity: 1; }
+}
+
+.anim-bar-1 { animation: appleBarGrow 0.75s cubic-bezier(0.34, 1.4, 0.64, 1) 0.5s both; }
+.anim-bar-2 { animation: appleBarGrow 0.8s cubic-bezier(0.34, 1.4, 0.64, 1) 0.58s both; }
+.anim-bar-3 { animation: appleBarGrow 0.9s cubic-bezier(0.34, 1.4, 0.64, 1) 0.66s both; }
+.anim-bar-4 { animation: appleBarGrow 0.8s cubic-bezier(0.34, 1.4, 0.64, 1) 0.74s both; }
+
+.bar-dark {
+  background: var(--hero-near-black);
+}
+
+.bar-lime {
+  background: var(--hero-lime);
+  box-shadow: 0 0 26px var(--hero-lime-glow);
+}
+
+.hero-lime-ring-marker {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--hero-lime);
+  border: 2px solid var(--hero-near-black);
+  position: absolute;
+  top: 7px;
+  animation: appleMarkerGlow 2s infinite ease-in-out;
+}
+
+@keyframes appleMarkerGlow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(216, 255, 54, 0.7); }
+  50% { box-shadow: 0 0 0 4px rgba(216, 255, 54, 0.2); }
+}
+
+.hero-bar-val {
+  position: absolute;
+  bottom: 5px;
+  font-family: var(--hero-font-mono);
+  font-size: 8px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.hero-bar-val-lime {
+  position: absolute;
+  bottom: 5px;
+  font-family: var(--hero-font-mono);
+  font-size: 8px;
+  font-weight: 800;
+  color: var(--hero-ink);
+}
+
+.hero-axis-label {
+  font-family: var(--hero-font-display);
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--hero-muted);
+  text-align: center;
+}
+
+.hero-axis-label.label-active {
+  color: var(--hero-ink);
+  font-weight: 800;
+}
+
+/* Chart Footer */
+.hero-card-impact-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.hero-legend-indicator {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--hero-font-display);
+  font-size: 8.5px;
+  color: var(--hero-muted);
+  font-weight: 600;
+}
+
+.hero-legend-dot-lime {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--hero-lime);
+  border: 1px solid var(--hero-near-black);
+}
+
+.hero-sim-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  border: 0;
+  background: transparent;
+  color: #1e7033;
+  font-family: var(--hero-font-display);
+  font-size: 10px;
+  font-weight: 800;
+  cursor: pointer;
+  padding: 3px 6px;
+  border-radius: 5px;
+  transition: all 0.2s ease;
+}
+
+.hero-sim-btn:hover {
+  background: rgba(30, 112, 51, 0.09);
+  transform: translateX(1px);
+}
+
+/* =========================================================================
+   KEYFRAME ANIMATIONS
+   ========================================================================= */
+@keyframes appleNavSlideDown {
+  0% {
+    opacity: 0;
+    transform: translateY(-24px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes appleHeadlineFade {
+  0% {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* =========================================================================
+   RESPONSIVE DESIGN
+   ========================================================================= */
+@media (max-width: 1024px) {
+  .hero-headline {
+    font-size: clamp(34px, 5.5vw, 64px);
+  }
+
+  .hero-cards-cluster {
+    max-width: 580px;
+    grid-template-columns: 280px 280px;
+    gap: 12px;
+  }
+
+  .hero-cards-left-col,
+  .hero-cards-right-col {
+    width: 280px;
+  }
+}
+
+@media (max-width: 768px) {
+  .hero-apple-navbar {
+    padding: 6px 12px;
+    gap: 8px;
+  }
+
+  .hero-nav-links,
+  .hero-nav-divider,
+  .hero-live-pill {
+    display: none;
+  }
+
+  .hero-headline {
+    font-size: clamp(32px, 7.5vw, 48px);
+    line-height: 0.95;
+    margin-bottom: 20px;
+  }
+
+  .hero-cards-cluster {
+    grid-template-columns: 1fr;
+    max-width: 320px;
+    gap: 12px;
+  }
+
+  .hero-cards-left-col,
+  .hero-cards-right-col {
+    width: 100%;
+  }
+
+  .hero-card-impact {
+    height: 280px;
+  }
+}
+
+@media (max-width: 480px) {
+  .hero-content-wrapper {
+    padding: 16px 14px 36px;
+  }
+
+  .hero-headline {
+    font-size: 32px;
+    line-height: 0.95;
+  }
+
+  .hero-cards-cluster {
+    max-width: 100%;
+  }
+
+  .hero-dial-circle {
+    width: 48px;
+    height: 48px;
+  }
+
+  .dial-value {
+    font-size: 12px;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .hero-card,
+  .anim-bounce-1,
+  .anim-bounce-2,
+  .anim-bounce-3,
+  .anim-bar-1,
+  .anim-bar-2,
+  .anim-bar-3,
+  .anim-bar-4,
+  .hero-chart-callout,
+  .hero-apple-navbar,
+  .hero-headline,
+  .hero-live-pulse-dot,
+  .hero-lime-ring-marker {
+    animation: none !important;
+    transition: none !important;
+  }
+}
