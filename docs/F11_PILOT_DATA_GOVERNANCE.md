@@ -1,0 +1,33 @@
+# F11 pilot data and model governance
+
+## Current state
+
+All borrower and loan rows in the demonstration are synthetic. The weather archive is a grid-cell historical series used only for matching stage summaries. Satellite NDVI can now be requested for a bounded plot rectangle and date window through the Copernicus Data Space Statistical API; it requires server-side `CDSE_CLIENT_ID` and `CDSE_CLIENT_SECRET`. Soil moisture is fetched on request from the Open-Meteo ECMWF model endpoint at configured district reference points. It is modeled grid output, not a sensor reading. Both feeds are telemetry only and are not used in credit assessments. Market price and matched yield remain unavailable, assumed, or illustrative as shown by the source registry. Source admission records review evidence; an admission decision alone does not activate a source in assessment code.
+
+To enable satellite calculation in a deployment, create a Copernicus Data Space OAuth client and inject its credentials into the backend environment (never the frontend). If credentials are absent, the API can still discover qualifying Sentinel-2 L2A scenes and clearly reports that NDVI calculation is not configured. The panel accepts a WGS84 plot bounding box up to 0.02° per side and a maximum 31-day date range; it does not persist the supplied bounds. The Statistical API evalscript excludes scene classification pixels marked cloud, shadow, cirrus, snow, or invalid. The displayed clear-pixel coverage is specific to the requested rectangle. Scene cloud percentage is scene-wide and is labeled separately. See the [Copernicus Statistical API](https://documentation.dataspace.copernicus.eu/APIs/SentinelHub/Statistical.html) and [authentication guide](https://documentation.dataspace.copernicus.eu/APIs/SentinelHub/Overview/Authentication.html).
+
+The soil panel fetches recent and upcoming hourly ECMWF model values for configured district reference points. The value timestamps are the model-valid times, and the API does not expose a model issue time in this response. These are approximate grid-cell model values, not farm measurements. See the [Open-Meteo ECMWF API documentation](https://open-meteo.com/en/docs/ecmwf-api).
+
+The only model artifact currently supported by the runtime is the bundled JSON fixture at `models/yield/fixtures/illustrative-linear-v1.json`. Its coefficients reproduce the existing illustrative yield rule, it has no held-out observations, and it is never an operational model. Runtime reads parse JSON, verify schema, identity, checksum through the loaded bytes, feature count, numeric coefficients, and synthetic crop/geography coverage. Pickle/joblib and arbitrary executable formats are unsupported. Normal assessment requests continue to use the transparent fallback unless a caller explicitly selects this fixture. Training is offline and is not started by assessment requests.
+
+## Admission and review
+
+Every source candidate should retain raw bytes or a stable upstream reference, SHA-256, source terms and reuse decision, codebook, exact units, crop/calendar crosswalk, geographic and time coverage, missingness, and reviewer rationale. Decisions are append-only and identify the authenticated administrator and frozen snapshot. An admitted decision means only that the review was recorded; it does not imply suitability for every claim or automatic runtime use. Reject mismatched crop, geography, year, units, or unsupported crosswalks. Record unavailable providers as unavailable, with the reason.
+
+Prioritize a crop/calendar/yield/weather join with validated district-to-grid alignment and original yield-source evidence. Then review NDVI, soil layers, and market prices. Satellite evidence must include cloud/coverage quality, spatial resolution, observation time and farm boundary intersection. Soil evidence must include layer depth and units. Price rows must identify commodity, market, date, and whether the amount is modal, realized, or assumed. Forecast issue time, valid time, and availability time must be preserved separately from historical reanalysis and analogues.
+
+## Model handoff and evaluation
+
+Any future artifact handoff must include a supported non-executable format, checksum, model and schema versions, runtime/dependencies, ordered feature names/types/units, crop and geographic coverage, training cutoff, source/data hashes, evaluation metadata, and an inference example. The registry must reject tampering, unknown schema, missing features, and coverage mismatch. Illustrative fallback status must remain visible whenever no admitted compatible artifact exists.
+
+Before empirical claims, prepare a seasonal climatology/trend baseline, a time-ordered holdout, and a geographic holdout when sample sizes permit. Report row counts, split years/geographies, errors, missingness, and training-only preprocessing. Intervals may be called calibrated only after calibration and held-out coverage evidence exists for the named quantity and horizon. Yield interval evidence cannot support probability-of-default calibration. Real credit modeling requires permissioned, linked repayment labels with an explicit event and horizon definition, plus independent temporal/geographic validation; household surveys alone do not provide those labels.
+
+## Pilot privacy, security and retention
+
+Use only data the institution and source terms authorize for the stated pilot purpose. Minimize identifiers and access by role and branch; keep credentials and raw financial payloads out of logs. Record access and consequential actions without copying sensitive values into audit reasons. Review exports and report recipients as protected data access.
+
+Before any real farmer data is loaded, the institution's data owner and security/privacy reviewer must approve purpose, legal basis/consent where applicable, access roster, incident handling, retention period, deletion procedure, and source terms. This repository does not set an institution-wide legal retention period. Until that schedule is approved, do not ingest real identifiable pilot data. Retain candidate source bytes only as needed for review and source-term compliance; record and execute a deletion date for rejected candidates. Retain admitted source snapshots only while permitted by their terms and documented purpose. Keep synthetic fixtures clearly labeled and separate from any later private pilot database.
+
+## Claim status
+
+Current empirical yield and credit-performance claims are `DEFERRED` / `BLOCKED_REAL_DATA`. No admitted aligned yield rows or permissioned linked repayment labels are asserted by this software. Dataset, policy, and provider-term claims require review against the relevant primary source at implementation time.

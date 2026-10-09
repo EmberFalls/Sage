@@ -139,6 +139,11 @@ def _connect():
         entity_type TEXT NOT NULL, entity_id TEXT NOT NULL, action TEXT NOT NULL,
         reason TEXT NOT NULL, result_ref TEXT, outcome TEXT NOT NULL, created_at TEXT NOT NULL
     )""")
+    con.execute("""CREATE TABLE IF NOT EXISTS source_admission_decisions (
+        decision_id TEXT PRIMARY KEY, source_id TEXT NOT NULL, snapshot_id TEXT,
+        status TEXT NOT NULL, reason TEXT NOT NULL, evidence_json TEXT NOT NULL,
+        reviewer_id TEXT NOT NULL, created_at TEXT NOT NULL
+    )""")
     try:
         with con:
             yield con
@@ -317,6 +322,27 @@ def list_loan_records() -> list[dict]:
 def list_source_records() -> list[dict]:
     with _connect() as con:
         return [json.loads(row[0]) for row in con.execute("SELECT record_json FROM data_sources ORDER BY source_id")]
+
+
+def save_source_admission_decision(record: dict) -> None:
+    """Append an admission decision; prior decisions remain immutable history."""
+    with _connect() as con:
+        con.execute("INSERT INTO source_admission_decisions VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                    (record["decision_id"], record["source_id"], record.get("snapshot_id"),
+                     record["status"], record["reason"], json.dumps(record["evidence"], sort_keys=True),
+                     record["reviewer_id"], record["created_at"]))
+
+
+def list_source_admission_decisions(source_id: str | None = None) -> list[dict]:
+    with _connect() as con:
+        if source_id:
+            rows = con.execute("SELECT * FROM source_admission_decisions WHERE source_id=? ORDER BY created_at DESC", (source_id,)).fetchall()
+        else:
+            rows = con.execute("SELECT * FROM source_admission_decisions ORDER BY created_at DESC").fetchall()
+    result = [dict(row) for row in rows]
+    for record in result:
+        record["evidence"] = json.loads(record.pop("evidence_json"))
+    return result
 
 
 def _canonical_json(value: dict) -> str:

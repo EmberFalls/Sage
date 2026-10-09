@@ -26,6 +26,30 @@ class ScenarioRequest(BaseModel):
     action_parameters: dict[str, Any] = Field(default_factory=dict)
 
 
+class SourceAdmissionDecisionCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+    status: Literal["candidate", "rejected", "admitted", "unavailable"]
+    reason: str = Field(min_length=8, max_length=1000)
+    snapshot_id: str | None = Field(default=None, max_length=120)
+    evidence: list[str] = Field(min_length=1, max_length=20)
+
+    @model_validator(mode="after")
+    def evidence_required_for_admission(self):
+        if self.status == "admitted" and not self.snapshot_id:
+            raise ValueError("Admission requires a frozen source snapshot")
+        if any(not item.startswith(("https://", "sha256:", "repo:")) for item in self.evidence):
+            raise ValueError("Evidence must be an HTTPS reference, checksum, or repository path")
+        return self
+
+
+class SatelliteTelemetryRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid", allow_inf_nan=False)
+    bbox: list[float] = Field(min_length=4, max_length=4)
+    start_date: date
+    end_date: date
+    max_scene_cloud_pct: float = Field(default=80, ge=0, le=100)
+
+
 class InterventionEvaluationRequest(ScenarioRequest):
     action_inputs: dict[str, Any] = Field(default_factory=dict)
 
@@ -100,6 +124,7 @@ class ScenarioBundle(BaseModel):
     engine_version: str
     assessment_as_of: date
     source_versions: dict[str, str]
+    model_artifact: dict[str, Any] = Field(default_factory=dict)
     source_snapshot_ids: list[str]
     frozen_context: dict[str, Any]
     scenario_request: dict[str, Any]
