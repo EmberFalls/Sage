@@ -10,11 +10,14 @@ import {
   Layers
 } from 'lucide-react'
 
+import { useAuth } from './auth/AuthContext'
+
 interface HeroSectionProps {
   onNavigate: (page: string) => void
 }
 
 export function HeroSection({ onNavigate }: HeroSectionProps) {
+  const { user, isAuthenticated, logout } = useAuth()
   return (
     <div className="hero-viewport">
       {/* Background Image & Atmospheric Color Grading */}
@@ -45,7 +48,7 @@ export function HeroSection({ onNavigate }: HeroSectionProps) {
             <button className="hero-nav-link active" onClick={() => onNavigate('landing')}>
               Home
             </button>
-            <button className="hero-nav-link" onClick={() => onNavigate('overview')}>
+            <button className="hero-nav-link" onClick={() => onNavigate(user?.role === 'farmer' ? 'farmer' : 'overview')}>
               Platform
             </button>
             <button className="hero-nav-link" onClick={() => onNavigate('methodology')}>
@@ -63,14 +66,29 @@ export function HeroSection({ onNavigate }: HeroSectionProps) {
 
           {/* Right Action / CTA Segment */}
           <div className="hero-nav-actions">
-            <div className="hero-live-pill" title="Current Season Cycle">
-              <span className="hero-live-pulse-dot" />
-              <span>Kharif '26</span>
-            </div>
-            <button className="hero-apple-cta" onClick={() => onNavigate('overview')}>
-              <span>Explore</span>
-              <ArrowRight size={13} strokeWidth={2.4} />
-            </button>
+            {isAuthenticated && user ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <button
+                  className="hero-apple-cta"
+                  onClick={() => onNavigate(user.role === 'farmer' ? 'farmer' : 'overview')}
+                  title={`Logged in as ${user.name}`}
+                  style={{ background: 'rgba(16, 185, 129, 0.25)', borderColor: 'rgba(52, 211, 153, 0.4)' }}
+                >
+                  <span>{user.role === 'farmer' ? 'Farmer Portal' : 'Workspace'}</span>
+                  <ArrowRight size={13} strokeWidth={2.4} />
+                </button>
+              </div>
+            ) : (
+              <>
+                <button className="hero-nav-link" style={{ fontWeight: 600, color: '#38bdf8' }} onClick={() => onNavigate('login')}>
+                  Sign In
+                </button>
+                <button className="hero-apple-cta" onClick={() => onNavigate('login')}>
+                  <span>Get Started</span>
+                  <ArrowRight size={13} strokeWidth={2.4} />
+                </button>
+              </>
+            )}
           </div>
         </nav>
       </header>
