@@ -110,6 +110,8 @@ def _connect():
         is_active INTEGER NOT NULL DEFAULT 1,
         created_at TEXT NOT NULL
     )""")
+    if "branch_id" not in {row[1] for row in con.execute("PRAGMA table_info(users)").fetchall()}:
+        con.execute("ALTER TABLE users ADD COLUMN branch_id TEXT")
     con.execute("""CREATE TABLE IF NOT EXISTS otp_sessions (
         id TEXT PRIMARY KEY,
         phone TEXT NOT NULL,
@@ -117,6 +119,25 @@ def _connect():
         expires_at TEXT NOT NULL,
         used INTEGER NOT NULL DEFAULT 0,
         created_at TEXT NOT NULL
+    )""")
+    con.execute("""CREATE TABLE IF NOT EXISTS auth_sessions (
+        jti TEXT PRIMARY KEY, user_id TEXT NOT NULL, expires_at TEXT NOT NULL,
+        revoked_at TEXT, created_at TEXT NOT NULL
+    )""")
+    con.execute("""CREATE TABLE IF NOT EXISTS farmer_requests (
+        request_id TEXT PRIMARY KEY, farmer_id TEXT NOT NULL, borrower_id TEXT NOT NULL,
+        assessment_id TEXT NOT NULL, message TEXT NOT NULL, status TEXT NOT NULL,
+        created_at TEXT NOT NULL, updated_at TEXT NOT NULL, reviewed_by TEXT, review_note TEXT
+    )""")
+    request_columns = {row[1] for row in con.execute("PRAGMA table_info(farmer_requests)").fetchall()}
+    if "reviewed_by" not in request_columns:
+        con.execute("ALTER TABLE farmer_requests ADD COLUMN reviewed_by TEXT")
+    if "review_note" not in request_columns:
+        con.execute("ALTER TABLE farmer_requests ADD COLUMN review_note TEXT")
+    con.execute("""CREATE TABLE IF NOT EXISTS access_audit (
+        audit_id TEXT PRIMARY KEY, actor_id TEXT NOT NULL, actor_role TEXT NOT NULL,
+        entity_type TEXT NOT NULL, entity_id TEXT NOT NULL, action TEXT NOT NULL,
+        reason TEXT NOT NULL, result_ref TEXT, outcome TEXT NOT NULL, created_at TEXT NOT NULL
     )""")
     try:
         with con:
@@ -641,3 +662,61 @@ def list_scenarios(limit: int = 50) -> list[dict]:
                           "cash_gap_inr": result["stress"]["cash_gap_inr"],
                           "action_status": result["action_status"]})
     return summaries
+
+
+def save_auth_session(jti: str, user_id: str, expires_at: str) -> None:
+    with _connect() as con:
+        con.execute("INSERT INTO auth_sessions VALUES (?, ?, ?, NULL, ?)",
+                    (jti, user_id, expires_at, datetime.now(timezone.utc).isoformat()))
+
+
+def active_auth_session(jti: str, user_id: str) -> bool:
+    with _connect() as con:
+        row = con.execute("SELECT expires_at, revoked_at FROM auth_sessions WHERE jti=? AND user_id=?", (jti, user_id)).fetchone()
+    return bool(row and not row['revoked_at'] and row['expires_at'] > datetime.now(timezone.utc).isoformat())
+
+
+def revoke_auth_session(jti: str) -> None:
+    with _connect() as con:
+        con.execute("UPDATE auth_sessions SET revoked_at=? WHERE jti=? AND revoked_at IS NULL",
+                    (datetime.now(timezone.utc).isoformat(), jti))
+
+
+def add_audit_event(*, actor_id: str, actor_role: str, entity_type: str, entity_id: str,
+                    action: str, reason: str, result_ref: str | None, outcome: str = 'success') -> None:
+    with _connect() as con:
+        con.execute("INSERT INTO access_audit VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    (f"AUD-{uuid4().hex}", actor_id, actor_role, entity_type, entity_id, action,
+                     reason[:500], result_ref, outcome, datetime.now(timezone.utc).isoformat()))
+
+
+def create_farmer_request(request_id: str, farmer_id: str, borrower_id: str, assessment_id: str, message: str) -> dict:
+    now = datetime.now(timezone.utc).isoformat()
+    with _connect() as con:
+        con.execute("INSERT INTO farmer_requests (request_id, farmer_id, borrower_id, assessment_id, message, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, 'open', ?, ?)",
+                    (request_id, farmer_id, borrower_id, assessment_id, message, now, now))
+    return get_farmer_request(request_id)
+
+
+def get_farmer_request(request_id: str) -> dict | None:
+    with _connect() as con:
+        row = con.execute("SELECT * FROM farmer_requests WHERE request_id=?", (request_id,)).fetchone()
+    return dict(row) if row else None
+
+
+def list_farmer_requests(farmer_id: str | None = None) -> list[dict]:
+    with _connect() as con:
+        if farmer_id:
+            rows = con.execute("SELECT * FROM farmer_requests WHERE farmer_id=? ORDER BY created_at DESC", (farmer_id,)).fetchall()
+        else:
+            rows = con.execute("SELECT * FROM farmer_requests ORDER BY created_at DESC").fetchall()
+    return [dict(row) for row in rows]
+
+
+def review_farmer_request(request_id: str, *, status: str, reviewer_id: str, note: str) -> dict | None:
+    now = datetime.now(timezone.utc).isoformat()
+    with _connect() as con:
+        cursor = con.execute("UPDATE farmer_requests SET status=?, review_note=?, reviewed_by=?, updated_at=? WHERE request_id=?",
+                             (status, note[:1000], reviewer_id, now, request_id))
+        row = con.execute("SELECT * FROM farmer_requests WHERE request_id=?", (request_id,)).fetchone()
+    return dict(row) if cursor.rowcount else None

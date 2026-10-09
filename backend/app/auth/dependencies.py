@@ -3,6 +3,7 @@ from fastapi import Depends, Header, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from app.auth.service import decode_access_token, get_user_by_id
+from app.db import active_auth_session
 
 security = HTTPBearer(auto_error=False)
 
@@ -22,7 +23,7 @@ async def get_current_user(
     try:
         payload = decode_access_token(token)
         user_id = payload.get("sub")
-        if not user_id:
+        if not user_id or not payload.get("jti") or not active_auth_session(payload["jti"], user_id):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid token claims",
@@ -61,8 +62,9 @@ async def get_optional_current_user(
     try:
         payload = decode_access_token(credentials.credentials)
         user_id = payload.get("sub")
-        if user_id:
-            return get_user_by_id(user_id)
+        if user_id and payload.get("jti") and active_auth_session(payload["jti"], user_id):
+            user = get_user_by_id(user_id)
+            return user if user and user.get("is_active") else None
     except Exception:
         return None
     return None

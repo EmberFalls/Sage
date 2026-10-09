@@ -11,7 +11,7 @@ from app.config import (
     JWT_SECRET,
     OTP_EXPIRY_MINUTES,
 )
-from app.db import _connect
+from app.db import _connect, save_auth_session
 
 
 def hash_password(password: str) -> str:
@@ -33,15 +33,19 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 def create_access_token(user_id: str, role: str, extra_data: Optional[dict] = None) -> str:
     """Generate a signed JWT access token."""
     expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    jti = uuid.uuid4().hex
     to_encode = {
         "sub": user_id,
         "role": role,
         "exp": expire,
         "iat": datetime.now(timezone.utc),
+        "jti": jti,
     }
     if extra_data:
         to_encode.update(extra_data)
-    return jwt.encode(to_encode, JWT_SECRET, algorithm=JWT_ALGORITHM)
+    token = jwt.encode(to_encode, JWT_SECRET, algorithm=JWT_ALGORITHM)
+    save_auth_session(jti, user_id, expire.isoformat())
+    return token
 
 
 def decode_access_token(token: str) -> dict:
@@ -78,6 +82,7 @@ def create_user(
     phone: Optional[str] = None,
     password: Optional[str] = None,
     linked_borrower_id: Optional[str] = None,
+    branch_id: Optional[str] = None,
 ) -> dict:
     user_id = f"USR-{uuid.uuid4().hex[:8].upper()}"
     password_hash = hash_password(password) if password else None
@@ -87,9 +92,9 @@ def create_user(
 
     with _connect() as con:
         con.execute(
-            """INSERT INTO users (id, role, name, email, phone, password_hash, linked_borrower_id, is_active, created_at)
-               VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?)""",
-            (user_id, role, name.strip(), clean_email, clean_phone, password_hash, linked_borrower_id, created_at),
+            """INSERT INTO users (id, role, name, email, phone, password_hash, linked_borrower_id, is_active, created_at, branch_id)
+               VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?)""",
+            (user_id, role, name.strip(), clean_email, clean_phone, password_hash, linked_borrower_id, created_at, branch_id),
         )
 
     return get_user_by_id(user_id)

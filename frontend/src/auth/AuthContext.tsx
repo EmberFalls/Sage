@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react'
 
-export type UserRole = 'bank_officer' | 'insurance_agent' | 'farmer'
+export type UserRole = 'bank_officer' | 'branch_lead' | 'insurance_agent' | 'farmer' | 'admin'
 
 export interface User {
   id: string
@@ -9,6 +9,7 @@ export interface User {
   email?: string | null
   phone?: string | null
   linked_borrower_id?: string | null
+  branch_id?: string | null
   is_active: boolean
   created_at: string
 }
@@ -65,6 +66,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }
 
   const logout = () => {
+    const activeToken = token
+    if (activeToken) fetch(`${API_BASE}/api/auth/logout`, { method: 'POST', headers: { Authorization: `Bearer ${activeToken}` } }).catch(() => {})
     setToken(null)
     setUser(null)
     localStorage.removeItem('sage_token')
