@@ -163,6 +163,20 @@ def add_loan_event(loan_id: str, payload: LedgerEventCreate):
         raise HTTPException(422, "Demo ledger events must be dated today or earlier")
     if payload.date < date.fromisoformat(loan_before["disbursed_at"]):
         raise HTTPException(422, "Ledger event cannot precede loan disbursement")
+    if payload.kind == "reversal":
+        original = next((event for event in loan_before.get("posted_events", [])
+                         if event["event_id"] == payload.reversal_of_event_id), None)
+        if original is None:
+            raise HTTPException(422, "Reversal target does not exist in this loan ledger")
+        if original.get("kind") == "reversal":
+            raise HTTPException(422, "A reversal cannot itself be reversed")
+        if any(event.get("reversal_of_event_id") == payload.reversal_of_event_id
+               for event in loan_before.get("posted_events", [])):
+            raise HTTPException(409, "This ledger event has already been reversed")
+        if payload.date < date.fromisoformat(original["date"]):
+            raise HTTPException(422, "Reversal cannot precede the original event")
+        if payload.amount_inr != Decimal(str(original["amount_inr"])):
+            raise HTTPException(422, "Reversal amount must exactly match the original event")
     event_data = payload.model_dump(mode="json")
     event_id = event_data.pop("event_id", None) or f"E-{uuid4().hex[:10].upper()}"
     event = {**event_data, "event_id": event_id,
@@ -207,7 +221,9 @@ def borrower_loan(borrower_id: str, scenario_id: str | None = None):
         loan["events"] = [{**event, "source_status": "synthetic_and_assumed"} for event in selected["cash_by_date"]]
         loan["posted_events"] = loan.get("posted_events", [])
         principal = Decimal(str(loan["principal_inr"]))
-        repayments = sum((Decimal(str(event["amount_inr"])) for event in loan["posted_events"] if event["kind"] == "repayment"), Decimal("0"))
+        reversed_event_ids = {event.get("reversal_of_event_id") for event in loan["posted_events"] if event.get("kind") == "reversal"}
+        repayments = sum((Decimal(str(event["amount_inr"])) for event in loan["posted_events"]
+                          if event["kind"] == "repayment" and event["event_id"] not in reversed_event_ids), Decimal("0"))
         paid_principal = min(principal, repayments)
         loan["outstanding_principal_inr"] = format(max(Decimal("0"), principal - repayments).quantize(Decimal("0.01")), ".2f")
         loan["principal_ledger_reconciles"] = Decimal(loan["outstanding_principal_inr"]) + paid_principal == principal

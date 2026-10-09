@@ -271,7 +271,9 @@ def get_scenario(scenario_id: str) -> dict | None:
     principal_override = result["scenario_request"].get("loan_principal_override_inr")
     if current_borrower and principal_override is not None:
         current_borrower["loan_principal_inr"] = str(Decimal(principal_override))
-    if current_borrower and frozen_borrower and json.dumps(current_borrower, sort_keys=True) != json.dumps(frozen_borrower, sort_keys=True):
+    current_borrower_cmp = {k: v for k, v in current_borrower.items() if k != "posted_loan_events"} if current_borrower else None
+    frozen_borrower_cmp = {k: v for k, v in frozen_borrower.items() if k != "posted_loan_events"} if frozen_borrower else None
+    if current_borrower_cmp and frozen_borrower_cmp and json.dumps(current_borrower_cmp, sort_keys=True) != json.dumps(frozen_borrower_cmp, sort_keys=True):
         reasons.append("borrower_profile_changed")
     versions = result.get("source_versions", {})
     if versions.get("engine") != ENGINE_VERSION:

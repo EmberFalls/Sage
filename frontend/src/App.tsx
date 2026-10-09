@@ -40,7 +40,7 @@ function App(){
   useEffect(()=>{refreshBorrowers().catch(()=>setError('Backend unavailable. Start the API to load the offline demo.'))},[])
   const currentKey=JSON.stringify([selected,rain,heat,stage,eventDate,price,bridge,action,asOf,irrigation,loanOverride])
   latestKey.current=currentKey
-  const run=async()=>{const requestId=++latestRequest.current;const requestKey=currentKey;setBusy(true);setError('');try{const r=await fetch(`${API}/api/scenarios/evaluate`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({borrower_id:selected,as_of:asOf,loan_principal_override_inr:loanOverride,action_id:action,overrides:{rainfall_change_pct:rain,heatwave_days:heat,heatwave_growth_stage:stage,heatwave_start_date:eventDate||null,market_price_change_pct:price,irrigation_fraction:irrigation,assumed_informal_bridge_inr:bridge}})});if(!r.ok)throw new Error((await r.json()).detail||'Assessment failed');const result=await r.json();if(requestId===latestRequest.current&&requestKey===latestKey.current){setAssessment(result);setAppliedKey(requestKey)}}catch(e:any){if(requestId===latestRequest.current&&requestKey===latestKey.current)setError(e.message||'Could not update assessment')}finally{if(requestId===latestRequest.current&&requestKey===latestKey.current)setBusy(false)}}
+  const run=async()=>{const requestId=++latestRequest.current;const requestKey=currentKey;setBusy(true);setError('');try{const r=await fetch(`${API}/api/scenarios/evaluate`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({borrower_id:selected,as_of:asOf,loan_principal_override_inr:loanOverride??undefined,action_id:action,overrides:{rainfall_change_pct:rain,heatwave_days:heat,heatwave_growth_stage:stage,heatwave_start_date:eventDate||null,market_price_change_pct:price,irrigation_fraction:irrigation,assumed_informal_bridge_inr:bridge}})});if(!r.ok){const body=await r.json().catch(()=>({}));const msg=typeof body.detail==='string'?body.detail:Array.isArray(body.detail)?body.detail.map((d:any)=>d.msg||JSON.stringify(d)).join(', '):'Assessment failed';throw new Error(msg)}const result=await r.json();if(requestId===latestRequest.current&&requestKey===latestKey.current){setAssessment(result);setAppliedKey(requestKey)}}catch(e:any){if(requestId===latestRequest.current&&requestKey===latestKey.current)setError(e.message||'Could not update assessment')}finally{if(requestId===latestRequest.current&&requestKey===latestKey.current)setBusy(false)}}
   useEffect(()=>{if(!borrowers.length||appliedKey===currentKey)return;const timer=window.setTimeout(()=>run(),350);return()=>{window.clearTimeout(timer);latestRequest.current+=1}},[selected,borrowers,rain,heat,stage,eventDate,price,bridge,action,asOf,irrigation,loanOverride,appliedKey])
   const filtered=useMemo(()=>borrowers.filter(b=>`${b.alias} ${b.id} ${b.district} ${b.crop}`.toLowerCase().includes(search.toLowerCase())),[borrowers,search])
   const borrower=appliedKey===currentKey&&assessment?.borrower_id===selected?{...borrowers.find(b=>b.id===selected),...assessment.frozen_context.borrower} as Borrower:borrowers.find(b=>b.id===selected)
@@ -74,6 +74,7 @@ function App(){
   {page==='scenarios'&&<ScenarioPage borrower={borrower} assessment={assess} rain={rain} setRain={setRain} heat={heat} setHeat={setHeat} stage={stage} setStage={(v)=>{setStage(v);setEventDate('')}} price={price} setPrice={setPrice} bridge={bridge} setBridge={setBridge} action={action} setAction={setAction} run={actionRun} busy={busy}/>}
   {page==='scenarios'&&<CalendarTimingPanel assessment={assess} value={eventDate||assessment?.stress.heat_event.start_date||''} onChange={value=>{setEventDate(value);const matched=assessment?.stress.crop_stages.find((row:any)=>row.start_date<=value&&value<=row.end_date);if(matched)setStage(matched.name)}}/>}
   {page==='scenarios'&&<ScenarioEvidence assessment={assess}/>}
+  {page==='scenarios'&&<F5CashLedgerPanel assessment={assess}/>}
   {page==='interventions'&&<><InterventionsPage assessment={assess} action={action} setAction={setAction} run={actionRun} go={navigate}/><ScenarioEvidence assessment={assess}/></>}
 
   {(page==='watchlist'||page==='reports')&&<WatchlistPage assessment={isStale||busy?null:assess} go={navigate} saved={savedScenarios} loadSaved={async()=>{try{const response=await fetch(`${API}/api/scenarios?limit=50`);if(!response.ok)throw new Error('Saved reports unavailable');const data=await response.json();setSavedScenarios(data.scenarios);setSavedError('')}catch(e:any){setSavedError(e.message||'Saved reports unavailable')}}} reopen={reopenSnapshot} savedError={savedError}/>}
@@ -164,6 +165,60 @@ function FarmerShell({page,borrower,assessment,go}:{page:string,borrower:Borrowe
   </main></div>
 }
 function FarmerPage({borrower,assessment}:{borrower:Borrower|undefined,assessment:Assessment|null}){return <div className="farmer-page"><div className="farmer-hero"><div className="brand-mark"><Sprout size={20}/></div><div><small>YOUR CROP LOAN SUMMARY</small><h2>Hello, {borrower?.alias||'Demo Farmer'}</h2></div></div><div className="kpi-grid"><Kpi label="Crop this season" value={borrower?.crop||'—'} detail={`${borrower?.area_ha||'—'} hectares · demo record`} icon={<Sprout size={18}/>} /><Kpi label="Next bank due" value={borrower?new Date(borrower.due_at).toLocaleDateString('en-IN'):'—'} detail="Check your loan documents" tone="blue" icon={<WalletCards size={18}/>} /><Kpi label="Indicative cash gap" value={assessment?inr(assessment.stress.cash_gap_inr):'—'} detail="Illustrative scenario only" tone="amber" icon={<AlertTriangle size={18}/>} /></div><Card><h2>Talk with your loan officer</h2><p className="body-copy">This demo does not contact your bank or change a loan. The figures are illustrative and should not be used as financial advice.</p></Card></div>}
+function F5CashLedgerPanel({assessment}:{assessment:Assessment|null}){
+  const [open,setOpen]=useState(false)
+  const cl=assessment?.cash_ledger
+  const fd=assessment?.feasibility_detail
+  const ch=assessment?.credit_history_summary
+  if(!cl)return null
+  const CATEGORY_COLOR:Record<string,string>={opening_balance:'blue',loan_disbursement:'olive',crop_sale_proceeds:'olive',input_cost:'amber',household_cost:'amber',bank_debt_service:'red',informal_bridge_draw:'neutral',informal_debt_service:'neutral'}
+  const dirArrow=(dir:string)=>dir==='credit'?<ArrowUpRight size={13} style={{color:'var(--olive)'}}/>:<ArrowDownRight size={13} style={{color:'var(--red,#c0392b)'}}/>
+  return <Card style={{marginTop:14} as any}>
+    <SectionTitle title="F5 · Canonical Cash Ledger" sub={`Dated event log · ${cl.events.length} events · ${cl.reconciled_to_paise?'✓ Reconciled to paise':'⚠ Reconciliation mismatch'} · ${assessment?.f5_ledger_version||''}`} action={<button className="btn-outline" onClick={()=>setOpen(v=>!v)}>{open?'Hide ledger':'Show ledger'}</button>}/>
+    <div className="kpi-grid" style={{marginBottom:12}}>
+      <div className="kpi-card"><small>Opening cash</small><b>{inr(cl.opening_cash_inr)}</b><span className="tag amber">Synthetic</span></div>
+      <div className="kpi-card"><small>Closing cash</small><b>{inr(cl.closing_cash_inr)}</b><span className={`tag ${cl.reconciled_to_paise?'olive':'amber'}`}>{cl.reconciled_to_paise?'Reconciled':'Check'}</span></div>
+      {fd&&<div className="kpi-card"><small>Feasibility</small><b>{fd.deterministic_result==='no_gap_at_current_inputs'?'No gap':'Gap exists'}</b><span className={`tag ${fd.deterministic_result==='no_gap_at_current_inputs'?'olive':'amber'}`}>{fd.payments_with_gap}/{fd.total_payments} dues with gap</span></div>}
+      {fd&&<div className="kpi-card"><small>Simulated repayment rate</small><b>{Math.round(Number(fd.simulated_repayment_rate)*100)}%</b><span className="tag neutral">{fd.simulation_scope.paths} paths · not calibrated</span></div>}
+    </div>
+    {fd&&<div className="notice pale" style={{marginBottom:12}}>
+      <ShieldCheck size={16}/>
+      <div><b>Feasibility scope</b><span> {fd.same_day_ordering_policy} · {fd.revenue_after_due_policy}</span></div>
+    </div>}
+    {open&&<>
+      <div className="table-wrap" style={{marginBottom:12}}>
+        <table>
+          <thead><tr><th>Event ID</th><th>Date</th><th>Category</th><th>Dir</th><th>Amount</th><th>Principal</th><th>Interest</th><th>Running cash</th></tr></thead>
+          <tbody>{cl.events.map((ev:any)=><tr key={ev.event_id}>
+            <td><code style={{fontSize:'0.7rem'}}>{ev.event_id}</code></td>
+            <td>{ev.effective_date}</td>
+            <td><span className={`tag ${CATEGORY_COLOR[ev.category]||'neutral'}`}>{ev.category.replaceAll('_',' ')}</span></td>
+            <td>{dirArrow(ev.direction)}</td>
+            <td style={{textAlign:'right'}}>{inr(ev.amount_inr)}</td>
+            <td style={{textAlign:'right'}}>{ev.principal_component_inr!=null?inr(ev.principal_component_inr):'—'}</td>
+            <td style={{textAlign:'right'}}>{ev.interest_component_inr!=null?inr(ev.interest_component_inr):'—'}</td>
+            <td style={{textAlign:'right',fontWeight:600}}>{inr(ev.running_cash_inr)}</td>
+          </tr>)}</tbody>
+        </table>
+      </div>
+      {cl.unpaid_obligations?.length>0&&<div className="notice amber" style={{marginBottom:10}}><AlertTriangle size={15}/><div><b>Unpaid obligations</b>{cl.unpaid_obligations.map((ob:any)=><span key={ob.obligation_id}>{ob.effective_date} · {inr(ob.amount_inr)} · modeled only</span>)}</div></div>}
+      {assessment?.stress?.payments&&<div style={{marginBottom:12}}><SectionTitle title="Due-by-due settlement" sub={`Minimum reserve ${inr(fd?.minimum_reserve_inr||'0.00')} · ${fd?.same_day_ordering_policy||''}`}/><div className="table-wrap"><table><thead><tr><th>Due date</th><th>Cash before</th><th>Available</th><th>Due</th><th>Principal paid</th><th>Interest paid</th><th>Unpaid</th><th>Cash after</th></tr></thead><tbody>{assessment.stress.payments.map((p:any,i:number)=><tr key={`${p.date}-${i}`}><td>{p.date}</td><td>{inr(p.cash_before_due_inr)}</td><td>{inr(p.cash_available_above_reserve_inr)}</td><td>{inr(p.bank_due_inr)}</td><td>{inr(p.principal_paid_inr)}</td><td>{inr(p.interest_paid_inr)}</td><td>{inr(p.unmet_due_inr)}</td><td>{inr(p.signed_post_payment_cash_inr)}</td></tr>)}</tbody></table></div></div>}
+      {ch&&<div style={{marginBottom:10}}>
+        <SectionTitle title="Credit history (as of assessment date)" sub={`Provenance: ${ch.data_provenance} · ${ch.history_completeness.replaceAll('_',' ')}`}/>
+        <div className="kpi-grid">
+          <div className="kpi-card"><small>Scheduled payments</small><b>{ch.total_scheduled_payments}</b></div>
+          <div className="kpi-card"><small>Actual payments</small><b>{ch.total_actual_payments}</b></div>
+          <div className="kpi-card"><small>Overdue events</small><b>{ch.overdue_event_count}</b>{ch.arrears_detected&&<span className="tag amber">Arrears in demo record</span>}</div>
+          <div className="kpi-card"><small>Max days overdue</small><b>{ch.max_days_overdue}</b></div>
+          <div className="kpi-card"><small>Renewals / rollovers</small><b>{ch.renewal_or_rollover_count}</b></div>
+          <div className="kpi-card"><small>Utilization</small><b>{ch.utilization_fraction==null?'Unknown':`${(Number(ch.utilization_fraction)*100).toFixed(1)}%`}</b></div>
+        </div>
+        <p className="microcopy" style={{marginTop:6}}>{ch.limitations[0]}</p>
+      </div>}
+      <div className="notice pale"><AlertTriangle size={15}/><span>{cl.limitations[0]} {cl.rounding_policy}</span></div>
+    </>}
+  </Card>
+}
 function Methodology(){return <div className="content-grid"><Card className="wide"><SectionTitle title="How this demo works" sub="One server-side assessment joins crop assumptions, climate scenario, dated cash and loan schedule."/><div className="method-flow">{[['01','Climate & crop stage','Hypothetical weather controls are assigned to the selected crop stage.'],['02','Illustrative yield response','An editable demo response rule adjusts yield; it is not trained or validated.'],['03','Dated cash ledger','Crop proceeds count only if the assumed sale date is on or before the bank due.'],['04','Conditional repayment','A simple simulation estimate is shown separately from observed repayment status.'],['05','Debt & actions','A three-season scenario and proposed actions show modeled trade-offs.']].map(x=><div className="method-step" key={x[0]}><b>{x[0]}</b><div><strong>{x[1]}</strong><p>{x[2]}</p></div></div>)}</div></Card><Card><SectionTitle title="Input provenance"/><div className="source-row"><span>Borrower & loan book</span><b className="tag amber">Synthetic</b></div><div className="source-row"><span>Weather</span><b className="tag olive">Assumed</b></div><div className="source-row"><span>NDVI / satellite</span><b className="tag neutral">Unavailable</b></div><div className="source-row"><span>Soil moisture</span><b className="tag neutral">Unavailable</b></div><div className="source-row"><span>Yield response & price</span><b className="tag olive">Assumed</b></div><p className="microcopy">One three-day Open-Meteo historical reanalysis sample is verified but not used by this demo. No matched Pune maize yield, weather, NDVI and price season is available; the other named sources remain uninspected or unverified.</p></Card><Card className="wide"><SectionTitle title="Claim limits"/><div className="notice amber"><AlertTriangle size={17}/><div><b>No validated default probability or hidden-debt detection.</b><span> Repayment feasibility is conditional on synthetic lending assumptions. Warnings describe only the modeled cash and debt timeline.</span></div></div></Card></div>}
 function CompareInfo(){return <></>}
 export default App

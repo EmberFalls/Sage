@@ -123,23 +123,34 @@ def _schedule(b: dict, action: str, shift: int = 0) -> tuple[list[dict], Decimal
     original_due = money(principal * (1 + rate * days / 365))
     extra = D("0.00")
     due_date = b["due_at"] + timedelta(days=shift)
+    accrued_interest = money(original_due - principal)
     if action == "reschedule_30d":
         extra = money(principal * rate * 30 / 365)
-        schedule = [{"date": due_date + timedelta(days=30), "amount_inr": original_due + extra}]
+        schedule = [{"date": due_date + timedelta(days=30), "amount_inr": original_due + extra,
+                     "principal_due_inr": principal, "interest_due_inr": accrued_interest + extra, "fee_due_inr": D("0.00")}]
     elif action == "split_payment":
         fee = money(original_due * D("0.015"))
         extra_interest = money(principal / 2 * rate * 45 / 365)
         extra = fee + extra_interest
         first = money((original_due + fee) / 2)
-        schedule = [{"date": due_date, "amount_inr": first},
-                    {"date": due_date + timedelta(days=45), "amount_inr": original_due + fee - first + extra_interest}]
+        principal_first = money(principal / 2)
+        interest_first = money(accrued_interest / 2)
+        fee_first = money(fee / 2)
+        schedule = [{"date": due_date, "amount_inr": first, "principal_due_inr": principal_first,
+                     "interest_due_inr": interest_first, "fee_due_inr": money(first-principal_first-interest_first)},
+                    {"date": due_date + timedelta(days=45), "amount_inr": original_due + fee - first + extra_interest,
+                     "principal_due_inr": money(principal-principal_first),
+                     "interest_due_inr": money(accrued_interest-interest_first+extra_interest),
+                     "fee_due_inr": money(fee-fee_first)}]
     else:
-        schedule = [{"date": due_date, "amount_inr": original_due}]
+        schedule = [{"date": due_date, "amount_inr": original_due, "principal_due_inr": principal,
+                     "interest_due_inr": accrued_interest, "fee_due_inr": D("0.00")}]
     return schedule, money(extra), original_due
 
 
 def build_dated_ledger(b: dict, revenue: Decimal, sale_date: date, schedule: list[dict], bridge_limit: Decimal,
-                       *, opening_cash=None, carried_formal=D("0"), carried_informal=D("0"), shift=0) -> dict:
+                       *, opening_cash=None, carried_formal=D("0"), carried_informal=D("0"), shift=0,
+                       minimum_reserve=D("0")) -> dict:
     """Cash is carried forward; principal enters once and unpaid due enters debt once.
 
     Every season receives a new synthetic crop loan. Carried bank arrears accrue
@@ -157,7 +168,10 @@ def build_dated_ledger(b: dict, revenue: Decimal, sale_date: date, schedule: lis
     scheduled = deepcopy(schedule)
     scheduled[0]["amount_inr"] = money(scheduled[0]["amount_inr"] + carried_formal * (1 + b["annual_rate"]))
     for item in scheduled:
-        events.append({"date": item["date"], "kind": "bank_due", "due_inr": item["amount_inr"], "priority": 2})
+        events.append({"date": item["date"], "kind": "bank_due", "due_inr": item["amount_inr"], "priority": 2,
+                       "principal_due_inr": item.get("principal_due_inr", b["loan_principal_inr"]),
+                       "interest_due_inr": item.get("interest_due_inr", D("0")) + (carried_formal * b["annual_rate"] if item is scheduled[0] else D("0")),
+                       "fee_due_inr": item.get("fee_due_inr", D("0"))})
     ledger, payments, draws = [], [], []
     remaining_bridge = money(bridge_limit)
     formal_balance = D("0.00")
@@ -170,19 +184,30 @@ def build_dated_ledger(b: dict, revenue: Decimal, sale_date: date, schedule: lis
             post(event["date"], event["kind"], event["amount_inr"])
             continue
         amount, pre = money(event["due_inr"]), cash
-        gap = max(D("0.00"), money(amount - max(D("0.00"), pre)))
-        draw = min(remaining_bridge, max(D("0.00"), money(amount - cash)))
+        available = max(D("0.00"), money(pre - minimum_reserve))
+        gap = max(D("0.00"), money(amount - available))
+        draw = min(remaining_bridge, gap)
         if draw:
             post(event["date"], "informal_bridge_draw", draw)
             draws.append((event["date"], draw))
             remaining_bridge -= draw
-        paid = min(amount, max(D("0.00"), cash))
-        post(event["date"], "bank_payment", -paid, scheduled_due_inr=amount)
+        paid = min(amount, max(D("0.00"), money(cash - minimum_reserve)))
         unpaid = money(amount - paid)
         formal_balance += unpaid
+        fee_paid = min(paid, money(event.get("fee_due_inr", D("0"))))
+        interest_paid = min(money(paid-fee_paid), money(event.get("interest_due_inr", D("0"))))
+        principal_paid = min(money(paid-fee_paid-interest_paid), money(event.get("principal_due_inr", b["loan_principal_inr"])))
+        post(event["date"], "bank_payment", -paid, scheduled_due_inr=amount,
+             principal_paid_inr=principal_paid, interest_paid_inr=interest_paid, fee_paid_inr=fee_paid)
         payments.append({"date": event["date"].isoformat(), "cash_before_due_inr": pre,
+                         "cash_available_above_reserve_inr": available, "minimum_reserve_inr": money(minimum_reserve),
                          "bank_due_inr": amount, "cash_gap_inr": gap, "informal_draw_inr": draw,
-                         "formal_paid_inr": paid, "unmet_due_inr": unpaid, "cash_after_due_inr": cash})
+                         "formal_paid_inr": paid, "principal_paid_inr": principal_paid,
+                         "interest_paid_inr": interest_paid, "fee_paid_inr": fee_paid, "unmet_due_inr": unpaid,
+                         "unpaid_principal_inr": money(event.get("principal_due_inr", b["loan_principal_inr"])-principal_paid),
+                         "unpaid_interest_inr": money(event.get("interest_due_inr", D("0"))-interest_paid),
+                         "unpaid_fee_inr": money(event.get("fee_due_inr", D("0"))-fee_paid),
+                         "cash_after_due_inr": cash, "signed_post_payment_cash_inr": cash})
     season_end = max(sale_date, scheduled[-1]["date"]) + timedelta(days=7)
     informal_rate = D(WARNING_CONFIG["informal_rate"])
     informal_interest = money(carried_informal * informal_rate + sum((amount * informal_rate * D((season_end - when).days) / 365 for when, amount in draws), D("0")))
@@ -191,7 +216,7 @@ def build_dated_ledger(b: dict, revenue: Decimal, sale_date: date, schedule: lis
     if informal_paid:
         post(season_end, "informal_payment", -informal_paid)
     informal_balance = money(informal_due - informal_paid)
-    return {"opening_cash_inr": money(opening), "cash_by_date": ledger, "payments": payments,
+    return {"opening_cash_inr": money(opening), "minimum_reserve_inr": money(minimum_reserve), "cash_by_date": ledger, "payments": payments,
             "cash_pre_due_inr": payments[0]["cash_before_due_inr"], "due_inr": payments[0]["bank_due_inr"],
             "cash_gap_inr": payments[0]["cash_gap_inr"], "cash_gap_total_inr": money(sum(p["cash_gap_inr"] for p in payments)),
             "formal_paid_inr": money(sum(p["formal_paid_inr"] for p in payments)),
@@ -354,7 +379,219 @@ def derive_financial_bridge(b: dict, baseline: dict, stress: dict) -> dict:
                       "formula": "quantity at reference price, then price on shocked quantity; timing excludes proceeds after due"})
     return {"steps": steps, "cash_pre_due_inr": stress["cash_pre_due_inr"], "due_inr": stress["due_inr"],
             "post_due_cash_inr": money(stress["cash_pre_due_inr"] - stress["due_inr"]), "shortfall_inr": stress["cash_gap_inr"],
-            "attribution": "Fixed sequential accounting attribution; rounded pennies are assigned to the price effect. Sale proceeds after due are excluded."}
+            "reconciliation_delta_inr": money(balance - stress["cash_pre_due_inr"]),
+            "attribution": "Sequential quantity then price attribution when both sales arrive by the due date; otherwise proceeds timing is attributed as one dated effect. Rounded residual pennies are assigned to the final effect. Sale proceeds after due are excluded."}
+
+
+# ---------------------------------------------------------------------------
+# F5 — Canonical dated ledger, credit history summary, feasibility detail
+# ---------------------------------------------------------------------------
+
+def build_canonical_ledger(b: dict, stress: dict) -> dict:
+    """F5: Authoritative chronological ledger with stable event IDs and formal/informal breakdown.
+
+    Each event carries a stable ID derived from its date+kind so replaying the
+    same inputs always produces the same IDs. Amounts are in exact INR (Decimal,
+    rounded to paise). The running cash balance is computed sequentially and
+    reconciles to the paise against stress[net_free_cash_inr].
+    """
+    import hashlib as _hl
+
+    def _eid(when: str, category: str, seq: int) -> str:
+        return "EVT-" + _hl.sha256(f"{when}:{category}:{seq}".encode()).hexdigest()[:12].upper()
+
+    raw_events = stress["cash_by_date"]   # from build_dated_ledger
+    balance = money(b["initial_cash_inr"])
+
+    # Rebuild principal / interest breakdown for bank_payment rows
+    # Principal is the loan principal; interest = due - principal
+    principal = b["loan_principal_inr"]
+    principal_repaid = D("0")
+
+    canonical_events: list[dict] = []
+    seq = 0
+
+    # Opening balance synthetic entry
+    canonical_events.append({
+        "event_id": _eid(b["disbursed_at"].isoformat(), "opening_balance", seq),
+        "effective_date": b["disbursed_at"].isoformat(),
+        "category": "opening_balance",
+        "direction": "credit",
+        "amount_inr": str(money(b["initial_cash_inr"])),
+        "principal_component_inr": None,
+        "interest_component_inr": None,
+        "running_cash_inr": str(money(b["initial_cash_inr"])),
+        "data_status": "synthetic_and_assumed",
+        "source_ids": [SOURCE_VERSION],
+        "evidence_id": None,
+        "scenario_only": True,
+        "note": "Synthetic opening cash from demo borrower profile",
+    })
+    seq += 1
+
+    for ev in raw_events:
+        kind = ev["kind"]
+        amount = D(str(ev["amount_inr"]))
+        when = ev["date"]
+        direction = "credit" if amount >= 0 else "debit"
+        abs_amount = money(abs(amount))
+
+        principal_comp = None
+        interest_comp = None
+
+        if kind == "bank_payment":
+            interest = money(ev.get("interest_paid_inr", 0))
+            fee = money(ev.get("fee_paid_inr", 0))
+            p_paid = money(ev.get("principal_paid_inr", max(D("0"), abs_amount - interest - fee)))
+            principal_repaid = money(principal_repaid + p_paid)
+            principal_comp = str(p_paid)
+            interest_comp = str(interest)
+            fee_comp = str(fee)
+            cat = "bank_debt_service"
+        elif kind == "loan_disbursement":
+            cat = "loan_disbursement"
+            principal_comp = str(abs_amount)
+        elif kind == "crop_inputs":
+            cat = "input_cost"
+        elif kind == "household_expense":
+            cat = "household_cost"
+        elif kind == "crop_sale":
+            cat = "crop_sale_proceeds"
+        elif kind == "informal_bridge_draw":
+            cat = "informal_bridge_draw"
+        elif kind == "informal_payment":
+            cat = "informal_debt_service"
+        else:
+            cat = kind
+        if kind != "bank_payment":
+            fee_comp = None
+
+        canonical_events.append({
+            "event_id": _eid(when, cat, seq),
+            "effective_date": when,
+            "category": cat,
+            "direction": direction,
+            "amount_inr": str(abs_amount),
+            "principal_component_inr": principal_comp,
+            "interest_component_inr": interest_comp,
+            "fee_component_inr": fee_comp,
+            "running_cash_inr": str(money(D(str(ev["cash_after_inr"])))),
+            "data_status": "synthetic_and_assumed",
+            "source_ids": [SOURCE_VERSION],
+            "evidence_id": None,
+            "scenario_only": True,
+            "note": f"Modelled {cat.replace('_', ' ')} entry; not a bank transaction record.",
+        })
+        seq += 1
+
+    # Reconciliation check
+    last_cash = D(str(canonical_events[-1]["running_cash_inr"])) if canonical_events else D("0")
+    expected = money(D(str(stress["net_free_cash_inr"])))
+    reconciled = last_cash == expected
+
+    return {
+        "events": canonical_events,
+        "opening_cash_inr": str(money(b["initial_cash_inr"])),
+        "closing_cash_inr": str(last_cash),
+        "expected_closing_cash_inr": str(expected),
+        "reconciled_to_paise": reconciled,
+        "rounding_policy": "ROUND_HALF_UP to 2 decimal places (paise) at each step",
+        "event_id_policy": "SHA-256 of effective_date:category:sequence_index, first 12 hex chars upper-cased",
+        "data_status": "synthetic_and_assumed",
+        "source_ids": [SOURCE_VERSION],
+        "limitations": [
+            "All entries are synthetic; no real bank transaction data is connected.",
+            "Loan disbursement and crop sale dates are demo assumptions.",
+            "Principal/interest breakdown uses the contractual split; arrears interest is simplified.",
+        ],
+        "minimum_reserve_policy": "INR 0.00; all non-negative cash is available for a contractual payment.",
+        "unpaid_obligations": [
+            {"obligation_id": "OBL-" + _hl.sha256(f"{p['date']}:bank_due:{i}".encode()).hexdigest()[:12].upper(),
+             "effective_date": p["date"], "category": "unpaid_formal_bank_due",
+             "amount_inr": str(p["unmet_due_inr"]), "scenario_only": True,
+             "source_ids": [SOURCE_VERSION]}
+            for i, p in enumerate(stress.get("payments", [])) if p["unmet_due_inr"] > 0
+        ],
+    }
+
+
+def derive_credit_history_summary(b: dict, as_of: date) -> dict:
+    """F5: Credit history with explicit provenance; distinguishes missing from perfect record."""
+    events = [*b.get("credit_history", []), *b.get("posted_loan_events", [])]
+    as_of_events = []
+    undated_events = []
+    for e in events:
+        d = e.get("date") or e.get("effective_date")
+        if d:
+            if date.fromisoformat(str(d)) <= as_of:
+                as_of_events.append(e)
+        else:
+            undated_events.append(e)
+    scheduled = sum(1 for e in as_of_events if e.get("kind") == "scheduled_repayment")
+    reversed_event_ids = {e.get("reversal_of_event_id") for e in as_of_events if e.get("kind") == "reversal"}
+    active_events = [e for e in as_of_events if e.get("event_id") not in reversed_event_ids]
+    actual = sum(1 for e in active_events if e.get("kind") in {"actual_repayment", "repayment"})
+    overdue_events = [e for e in active_events if e.get("days_overdue", 0) > 0]
+    renewals = sum(1 for e in active_events if e.get("kind") in {"renewal", "rollover"} or e.get("status") in {"renewal", "rollover"})
+    utilization_values = [D(str(e["utilization_fraction"])) for e in active_events if e.get("utilization_fraction") is not None]
+    return {
+        "events_as_of": [{**_jsonable(e), "data_provenance": e.get("source_status", "synthetic_demo_records")} for e in as_of_events],
+        "undated_history_events": [{**_jsonable(e), "data_provenance": e.get("source_status", "synthetic_demo_records"), "as_of_eligibility": "unknown_date_excluded_from_as_of_counts"} for e in undated_events],
+        "total_scheduled_payments": scheduled,
+        "total_actual_payments": actual,
+        "overdue_event_count": len(overdue_events),
+        "max_days_overdue": max((e.get("days_overdue", 0) for e in overdue_events), default=0),
+        "arrears_detected": len(overdue_events) > 0,
+        "renewal_or_rollover_count": renewals,
+        "utilization_fraction": str(utilization_values[-1]) if utilization_values else None,
+        "data_provenance": "synthetic_demo_records_and_posted_demo_journal" if b.get("posted_loan_events") else "synthetic_demo_records",
+        "observed_bank_data": False,
+        "history_completeness": "partial_synthetic" if as_of_events or undated_events else "absent_no_history_available",
+        "limitations": [
+            "Records are synthetic; no real bank repayment history is connected.",
+            "Absent history is distinguished from a confirmed perfect payment record.",
+            "Future payment events are excluded; undated records are retained separately but not counted as of the assessment date.",
+        ],
+    }
+
+
+def derive_feasibility_detail(stress: dict, b: dict) -> dict:
+    """F5: Deterministic feasibility with documented scope; no invented probability."""
+    pb = stress["probability_basis"]
+    payments = stress.get("payments", [])
+    gap_payments = [p for p in payments if D(str(p["cash_gap_inr"])) > 0]
+    total_gap = money(sum(D(str(p["cash_gap_inr"])) for p in gap_payments))
+    return {
+        "deterministic_result": "gap_exists" if gap_payments else "no_gap_at_current_inputs",
+        "cash_gap_inr": str(stress["cash_gap_inr"]),
+        "cash_gap_total_all_dues_inr": str(stress.get("cash_gap_total_inr", stress["cash_gap_inr"])),
+        "payments_with_gap": len(gap_payments),
+        "total_payments": len(payments),
+        "simulated_repayment_rate": str(stress["repayment_probability_simulated"]),
+        "simulated_shortfall_rate": str(stress["p_shortfall"]),
+        "simulation_scope": {
+            "paths": pb["paths"],
+            "repaid_paths": pb["repaid_paths"],
+            "shortfall_paths": pb["shortfall_paths"],
+            "type": pb["type"],
+            "yield_range": pb["yield_range"],
+            "price_range": pb["price_range"],
+            "calibrated_to_observed_defaults": pb["calibrated"],
+        },
+        "formal_balance_end_inr": str(stress["formal_balance_end_inr"]),
+        "formal_repayment_status": stress["formal_repayment_status"],
+        "revenue_before_due": str(stress["cash_pre_due_inr"]),
+        "contractual_due": str(stress["due_inr"]),
+        "minimum_reserve_inr": str(stress.get("minimum_reserve_inr", D("0.00"))),
+        "same_day_ordering_policy": "Loan disbursement and crop sale (priority 0, then kind order), input and household costs (priority 1), then bank due (priority 2); same-priority events use stable kind order.",
+        "revenue_after_due_policy": "Sale proceeds dated after the bank due date cannot settle that due.",
+        "limitations": [
+            "Feasibility is conditioned on the synthetic demo scenario only.",
+            "21-path simulation uses equally weighted hypothetical yield/price perturbations.",
+            "No model is trained or calibrated to observed agricultural credit defaults.",
+            "Probability fields describe this finite scenario set, not population-level default risk.",
+        ],
+    }
 
 
 def evaluate_scenario(req: ScenarioRequest) -> dict:
@@ -363,6 +600,9 @@ def evaluate_scenario(req: ScenarioRequest) -> dict:
     # without mutating the borrower's existing synthetic profile.
     if req.loan_principal_override_inr is not None:
         b["loan_principal_inr"] = D(str(req.loan_principal_override_inr))
+    from app.db import get_loan_record
+    posted = (get_loan_record(req.borrower_id) or {}).get("posted_events", [])
+    b["posted_loan_events"] = [event for event in posted if date.fromisoformat(event["date"]) <= req.as_of]
     baseline = _assessment(b, req, shock=False)
     stress = _assessment(b, req, shock=True)
     # Persist the actual calendar stage as the canonical request value when a
@@ -403,4 +643,12 @@ def evaluate_scenario(req: ScenarioRequest) -> dict:
         "input_data_status": {"observed": [], "forecast": [], "assumed": ["weather", "calendar", "yield", "price"], "simulated": ["borrower", "loan", "credit history"], "unavailable": ["NDVI", "soil moisture"]},
         "risk_semantics": "Repayment feasibility is the fraction of 21 equally weighted hypothetical yield/price paths that settle all scheduled bank dues. This finite simulation is not calibrated to real borrowers or observed defaults.",
         "drivers": [f"Crop sale {stress['sale_date']} vs first bank due {stress['due_date']}", f"Assumed {b['crop']} heat sensitivity in {req.overrides.heatwave_growth_stage}; illustrative response", "Dated expenses, permitted bridge draws and both installments are reconciled in the cash ledger"],
-        "warnings": ["All lending records are synthetic; climate/yield/price inputs are assumed.", "Crop calendar is an illustrative timing fixture, not a verified regional agronomic calendar.", "Actions require bank review; informal borrowing is a user-selected simulation."]})
+        "warnings": ["All lending records are synthetic; climate/yield/price inputs are assumed.", "Crop calendar is an illustrative timing fixture, not a verified regional agronomic calendar.", "Actions require bank review; informal borrowing is a user-selected simulation."],
+        # F5 — additive new fields; do not remove or rename existing keys above
+        "snapshot_freshness": "current",
+        "snapshot_stale_reasons": [],
+        "cash_ledger": build_canonical_ledger(b, stress),
+        "credit_history_summary": derive_credit_history_summary(b, req.as_of),
+        "feasibility_detail": derive_feasibility_detail(stress, b),
+        "f5_ledger_version": "f5-canonical-ledger-v1",
+    })

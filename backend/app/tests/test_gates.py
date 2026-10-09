@@ -11,7 +11,7 @@ from fastapi.testclient import TestClient
 from app.main import app
 from app.db import _connect, get_borrower_record, get_scenario, save_scenario
 from app.schemas import ScenarioBundle, ScenarioRequest
-from app.services.assessment import BORROWERS, _daily_reanalysis, _calendar, build_dated_ledger, evaluate_scenario, money
+from app.services.assessment import BORROWERS, _daily_reanalysis, _calendar, build_dated_ledger, build_canonical_ledger, evaluate_scenario, money
 
 
 class GateVerification(unittest.TestCase):
@@ -162,6 +162,53 @@ class GateVerification(unittest.TestCase):
         self.assertEqual(flow['formal_balance_end_inr'], 0)
         self.assertEqual(flow['bridge_draw_inr'], 0)
         self.assert_ledger(flow)
+
+    def test_f5_independent_cash_example_and_exact_reserve_behavior(self):
+        b = dict(BORROWERS['B-DEMO-001'])
+        b.update(initial_cash_inr=D('10000'), loan_principal_inr=D('70000'), input_cost_inr=D('60000'),
+                 living_cost_inr=D('15000'), disbursed_at=date(2026,1,1), sowing_date=date(2026,1,1),
+                 due_at=date(2026,2,1))
+        flow = build_dated_ledger(b, D('100000'), date(2026,1,20),
+                                  [{'date':date(2026,2,1),'amount_inr':D('77000')}], D('0'))
+        self.assertEqual(flow['net_free_cash_inr'], D('28000.00'))
+        self.assertEqual(flow['payments'][0]['cash_before_due_inr'], D('105000.00'))
+        self.assertEqual(flow['payments'][0]['formal_paid_inr'], D('77000.00'))
+        self.assertEqual(flow['payments'][0]['signed_post_payment_cash_inr'], D('28000.00'))
+        reserved = build_dated_ledger(b, D('100000'), date(2026,1,20),
+                                      [{'date':date(2026,2,1),'amount_inr':D('77000')}], D('0'),
+                                      minimum_reserve=D('30000'))
+        self.assertEqual(reserved['payments'][0]['cash_gap_inr'], D('2000.00'))
+        self.assertEqual(reserved['payments'][0]['formal_paid_inr'], D('75000.00'))
+        self.assertEqual(reserved['payments'][0]['unmet_due_inr'], D('2000.00'))
+
+    def test_f5_api_ledger_reconciles_and_records_unpaid_due(self):
+        bundle = evaluate_scenario(ScenarioRequest(overrides={'heatwave_days':14,'market_price_change_pct':-70}))
+        ledger = bundle['cash_ledger']
+        self.assertTrue(ledger['reconciled_to_paise'])
+        self.assertEqual(D(ledger['closing_cash_inr']), D(ledger['expected_closing_cash_inr']))
+        self.assertEqual(len(ledger['unpaid_obligations']),
+                         sum(1 for p in bundle['stress']['payments'] if D(str(p['unmet_due_inr'])) > 0))
+        self.assertEqual(D(str(bundle['repayment_bridge']['reconciliation_delta_inr'])), D('0.00'))
+
+    def test_f5_posted_journal_correction_uses_immutable_reversal(self):
+        loan = self.client.get('/api/loans').json()['loans'][0]
+        loan_id = loan['loan_id']
+        original = self.client.post(f"/api/loans/{loan_id}/events", json={
+            'date': date.today().isoformat(), 'kind': 'repayment', 'amount_inr': '100.00',
+            'event_id': 'F5-REPAY-001'}).json()['loan']
+        self.assertEqual(len(original['posted_events']), 1)
+        reversed_result = self.client.post(f"/api/loans/{loan_id}/events", json={
+            'date': date.today().isoformat(), 'kind': 'reversal', 'amount_inr': '100.00',
+            'event_id': 'F5-REVERSAL-001', 'reversal_of_event_id': 'F5-REPAY-001'} )
+        self.assertEqual(reversed_result.status_code, 201)
+        events = reversed_result.json()['loan']['posted_events']
+        self.assertEqual(len(events), 2)
+        self.assertEqual(next(e for e in events if e['event_id'] == 'F5-REPAY-001')['kind'], 'repayment')
+        self.assertEqual(next(e for e in events if e['event_id'] == 'F5-REVERSAL-001')['reversal_of_event_id'], 'F5-REPAY-001')
+        duplicate = self.client.post(f"/api/loans/{loan_id}/events", json={
+            'date': date.today().isoformat(), 'kind': 'reversal', 'amount_inr': '100.00',
+            'event_id': 'F5-REVERSAL-002', 'reversal_of_event_id': 'F5-REPAY-001'})
+        self.assertEqual(duplicate.status_code, 409)
 
     def test_g4_both_actions_same_shock_and_full_schedule(self):
         request = {'overrides':{'heatwave_days':4}}
