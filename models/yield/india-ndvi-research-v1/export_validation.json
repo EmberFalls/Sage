@@ -1,0 +1,7 @@
+{
+  "portable_prediction_rows": 2424,
+  "unsupported_district_rows_rejected": 104,
+  "maximum_absolute_difference_t_per_ha": 1.7763568394002505e-15,
+  "deterministic_example": true,
+  "operational_admission": false
+}

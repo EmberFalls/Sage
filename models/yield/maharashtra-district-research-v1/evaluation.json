@@ -1,0 +1,240 @@
+{
+  "model_version": "maharashtra-district-research-v1",
+  "status": "RESEARCH_ONLY",
+  "operational_admission": false,
+  "source_class": "third_party_historical_yield_mirror_unverified",
+  "input_sha256": "5b2637058ca4aff2ef7c0e0f2f391bca712300d082693b585f489871fd91d520",
+  "source_url": null,
+  "source_context": "Existing local crop_production mirror. Official OGD catalog documents district crop area (ha) and production (t); exact mirror origin and license are not verified.",
+  "official_catalog": "https://www.data.gov.in/catalog/district-wise-season-wise-crop-production-statistics-0",
+  "label": "production_tonnes / harvested_area_hectares",
+  "units": "t/ha",
+  "features": [
+    "district",
+    "crop",
+    "year"
+  ],
+  "excluded_features": [
+    "current-year Production",
+    "current-year Area",
+    "current-year Yield",
+    "future observations",
+    "synthetic weather",
+    "loan outcomes"
+  ],
+  "geography": "Maharashtra district aggregate; Maize/Kharif and Wheat/Rabi",
+  "districts": [
+    "AHMEDNAGAR",
+    "AKOLA",
+    "AMRAVATI",
+    "AURANGABAD",
+    "BEED",
+    "BHANDARA",
+    "BULDHANA",
+    "CHANDRAPUR",
+    "DHULE",
+    "GADCHIROLI",
+    "GONDIA",
+    "HINGOLI",
+    "JALGAON",
+    "JALNA",
+    "KOLHAPUR",
+    "LATUR",
+    "NAGPUR",
+    "NANDED",
+    "NANDURBAR",
+    "NASHIK",
+    "OSMANABAD",
+    "PARBHANI",
+    "PUNE",
+    "SANGLI",
+    "SATARA",
+    "SOLAPUR",
+    "THANE",
+    "WARDHA",
+    "WASHIM",
+    "YAVATMAL"
+  ],
+  "input_scope_rows": 961,
+  "accepted_rows": 961,
+  "excluded_rows": 0,
+  "missingness_before_filter": {
+    "State_Name": 0,
+    "District_Name": 0,
+    "Crop_Year": 0,
+    "Season": 0,
+    "Crop": 0,
+    "Area": 0,
+    "Production": 0
+  },
+  "splits": {
+    "initial_training_years": [
+      1997,
+      1998,
+      1999,
+      2000,
+      2001,
+      2002,
+      2003,
+      2004,
+      2005,
+      2006
+    ],
+    "validation_years": [
+      2008,
+      2009,
+      2010
+    ],
+    "final_fit_years": [
+      1997,
+      1998,
+      1999,
+      2000,
+      2001,
+      2002,
+      2003,
+      2004,
+      2005,
+      2006,
+      2007,
+      2008,
+      2009,
+      2010
+    ],
+    "holdout_years": [
+      2012,
+      2013,
+      2014
+    ],
+    "initial_training_rows": 522,
+    "validation_rows": 170,
+    "final_fit_rows": 742,
+    "holdout_rows": 162
+  },
+  "validation_scores": {
+    "district_median": {
+      "mae_t_per_ha": 0.4496457425198251,
+      "rmse_t_per_ha": 0.6059520950042604,
+      "rows": 170
+    },
+    "recent_median": {
+      "mae_t_per_ha": 0.3784760556440747,
+      "rmse_t_per_ha": 0.5159130751194229,
+      "rows": 170
+    },
+    "trend": {
+      "mae_t_per_ha": 0.3829437682658201,
+      "rmse_t_per_ha": 0.5289938162609544,
+      "rows": 170
+    },
+    "ridge_0.1": {
+      "mae_t_per_ha": 0.40688580814429326,
+      "rmse_t_per_ha": 0.5308614649321834,
+      "rows": 170
+    },
+    "ridge_1": {
+      "mae_t_per_ha": 0.41019261006477126,
+      "rmse_t_per_ha": 0.5345446576868804,
+      "rows": 170
+    },
+    "ridge_10": {
+      "mae_t_per_ha": 0.4398274683503985,
+      "rmse_t_per_ha": 0.5657467096524026,
+      "rows": 170
+    },
+    "ridge_100": {
+      "mae_t_per_ha": 0.5267470183887024,
+      "rmse_t_per_ha": 0.6530875020005551,
+      "rows": 170
+    },
+    "random_forest_leaf_2": {
+      "mae_t_per_ha": 0.42612807207327674,
+      "rmse_t_per_ha": 0.5799352491050148,
+      "rows": 170
+    },
+    "random_forest_leaf_5": {
+      "mae_t_per_ha": 0.4921875934607227,
+      "rmse_t_per_ha": 0.6490021713609,
+      "rows": 170
+    },
+    "random_forest_leaf_10": {
+      "mae_t_per_ha": 0.563013475838615,
+      "rmse_t_per_ha": 0.6977472965864878,
+      "rows": 170
+    },
+    "extra_trees_leaf_2": {
+      "mae_t_per_ha": 0.40615462046350753,
+      "rmse_t_per_ha": 0.5631455925093811,
+      "rows": 170
+    },
+    "extra_trees_leaf_5": {
+      "mae_t_per_ha": 0.44233246950694016,
+      "rmse_t_per_ha": 0.5981592213974015,
+      "rows": 170
+    },
+    "extra_trees_leaf_10": {
+      "mae_t_per_ha": 0.5220369268835249,
+      "rmse_t_per_ha": 0.669626812593308,
+      "rows": 170
+    }
+  },
+  "selected_model": "extra_trees_leaf_2",
+  "selected_baseline": "recent_median",
+  "holdout_scores": {
+    "extra_trees_leaf_2": {
+      "mae_t_per_ha": 0.48377000134663267,
+      "rmse_t_per_ha": 0.6367522855572725,
+      "rows": 162
+    },
+    "recent_median": {
+      "mae_t_per_ha": 0.4613373324909214,
+      "rmse_t_per_ha": 0.611058965361261,
+      "rows": 162
+    }
+  },
+  "holdout_mae_improvement_fraction": -0.04862530577048574,
+  "passes_accuracy_gate": false,
+  "seed": 20261009,
+  "dependencies": {
+    "python": "3.12.14",
+    "scikit-learn": "1.7.2",
+    "numpy": "2.2.6",
+    "pandas": "2.2.3",
+    "joblib": "1.6.0"
+  },
+  "limitations": [
+    "Historical baseline model only: no climate, NDVI, irrigation or soil response is learned.",
+    "Not a farm-level yield forecast, default probability, or validated response to stage interventions.",
+    "Mirror origin, release dates, district boundary history and redistribution license need verification.",
+    "A two-year outcome availability lag is assumed, not source-verified.",
+    "No calibrated prediction intervals. Results do not justify 2026 extrapolation.",
+    "The latest three observed years are held out once; selection uses earlier validation years only.",
+    "Even if the accuracy gate passes, data provenance and climate-feature admission remain unmet."
+  ],
+  "holdout_by_crop": {
+    "Maize": {
+      "extra_trees_leaf_2": {
+        "mae_t_per_ha": 0.6002493599853576,
+        "rmse_t_per_ha": 0.7801393136199498,
+        "rows": 75
+      },
+      "recent_median": {
+        "mae_t_per_ha": 0.588940866508472,
+        "rmse_t_per_ha": 0.7517472992193813,
+        "rows": 75
+      }
+    },
+    "Wheat": {
+      "extra_trees_leaf_2": {
+        "mae_t_per_ha": 0.38335676114083544,
+        "rmse_t_per_ha": 0.4799085341871816,
+        "rows": 87
+      },
+      "recent_median": {
+        "mae_t_per_ha": 0.3513342859240674,
+        "rmse_t_per_ha": 0.4561882984984868,
+        "rows": 87
+      }
+    }
+  }
+}

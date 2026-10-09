@@ -1,0 +1,56 @@
+{
+  "record": "https://zenodo.org/records/13838912",
+  "version": "1.2",
+  "archive_url": "https://zenodo.org/api/records/13838912/files/cybench-data.zip/content",
+  "archive_size": 12652190560,
+  "files": [
+    {
+      "archive_path": "cybench-data/wheat/IN/yield_wheat_IN.csv",
+      "name": "yield_wheat_IN.csv",
+      "bytes": 784689,
+      "sha256": "94e11d44ea3504468d2303131b12f425e05a98fb8c68106d6b99d577c5d0283c"
+    },
+    {
+      "archive_path": "cybench-data/wheat/IN/ndvi_wheat_IN.csv",
+      "name": "ndvi_wheat_IN.csv",
+      "bytes": 26472273,
+      "sha256": "a6c6cdbd97f2953f98ae3ea6e5ddb6db65d6728f2e1dde63ca20dbb4f78255d0"
+    },
+    {
+      "archive_path": "cybench-data/wheat/IN/crop_calendar_wheat_IN.csv",
+      "name": "crop_calendar_wheat_IN.csv",
+      "bytes": 29926,
+      "sha256": "caa6bf45261b926eae4002f002e444603cefe78321ec17ca62b35fd9c6709cf9"
+    },
+    {
+      "archive_path": "cybench-data/wheat/IN/soil_wheat_IN.csv",
+      "name": "soil_wheat_IN.csv",
+      "bytes": 32426,
+      "sha256": "e781908b3f5c8bb063eb8c1db5b0d3e59e1c900b5cdc8701143cbe3be64ff272"
+    },
+    {
+      "archive_path": "cybench-data/maize/IN/crop_calendar_maize_IN.csv",
+      "name": "crop_calendar_maize_IN.csv",
+      "bytes": 30686,
+      "sha256": "420900771d3dc2e1a0825e64c22452adc55f6259b18b2414ddef3cc7f280bca0"
+    },
+    {
+      "archive_path": "cybench-data/maize/IN/ndvi_maize_IN.csv",
+      "name": "ndvi_maize_IN.csv",
+      "bytes": 26802957,
+      "sha256": "ada7b25b4c6d087036a952b794a8db571311da43df4e9afb46b8350ed3a89879"
+    },
+    {
+      "archive_path": "cybench-data/maize/IN/soil_maize_IN.csv",
+      "name": "soil_maize_IN.csv",
+      "bytes": 32792,
+      "sha256": "2074e6a87cabe45364a893cf96cbe1ac293631993107ab406b60905c307308f6"
+    },
+    {
+      "archive_path": "cybench-data/maize/IN/yield_maize_IN.csv",
+      "name": "yield_maize_IN.csv",
+      "bytes": 789588,
+      "sha256": "61dd362b8981c8f69e839d4fa86765ba8d7c88912494cbf2ff1c45c5d8872712"
+    }
+  ]
+}

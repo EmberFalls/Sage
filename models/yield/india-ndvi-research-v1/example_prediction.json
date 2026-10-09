@@ -1,0 +1,26 @@
+{
+  "yield_t_per_ha": 1.687122713964176,
+  "units": "t/ha",
+  "model_version": "india-ndvi-research-v1",
+  "status": "RESEARCH_ONLY",
+  "operational_admission": false,
+  "source_class": "CY-Bench real historical district yields and MODIS NDVI; retrospective research",
+  "district_id": "IN-14-0001",
+  "crop": "maize",
+  "as_of": "2015-03-15",
+  "uncertainty": {
+    "status": "unavailable",
+    "reason": "No calibrated prediction intervals"
+  },
+  "limitations": [
+    "Retrospective district estimates; not farm-level, production-approved, or calibrated credit probabilities.",
+    "Calendar is a static WorldCereal-derived crop-season estimate, not dated district sowing observations.",
+    "Dataset/calendar/soil versions may postdate historical forecast origins; historical publication times are unknown.",
+    "NDVI has a fixed assumed 7-day availability lag, not verified publication timestamps.",
+    "Yields have an assumed two-year reporting lag; held-out labels never enter validation or holdout features.",
+    "Weather, forecast, irrigation and stage-shock effects are not learned by this NDVI model.",
+    "No prediction intervals or empirical interval coverage are claimed.",
+    "2026 temporal extrapolation and Maharashtra/Pune borrower matching require further validation.",
+    "Latest three years evaluated once after model selection on earlier validation years."
+  ]
+}

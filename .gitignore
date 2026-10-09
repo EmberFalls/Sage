@@ -14,4 +14,8 @@ frontend/dist/
 frontend/.env
 frontend/.npm-cache/
 backend/.env
+backend/.venv-yield/
+data/training/**/*.csv
+models/yield/**/model.joblib
+models/yield/**/reviewed_rows.csv
 

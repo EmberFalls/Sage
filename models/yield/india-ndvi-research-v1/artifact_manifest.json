@@ -1,0 +1,15 @@
+{
+  "model_version": "india-ndvi-research-v1",
+  "sha256": {
+    "aligned_features.csv": "dd3a4b37e9c4a5692f67c0d014314b02c2202698ce9110fc36b59466215168b9",
+    "baseline_history.csv": "0c18eff7d90d2298355de14a5f64bf951198cd90dc4a1b03b0cb699bee8c5442",
+    "evaluation.json": "c3b5ec0785e17bb25eb85a1b57d3f2702a038debacd42e773ed61637a73629ec",
+    "example_prediction.json": "c1026617669567f3f83efee1d1add6724fbe39f5d5fda028f6c262488ebde9ec",
+    "example_request.json": "d5c1e5c6f596b4d3da9d6d2e27c8cf7038f0cc87b18815437d1eebab47b07ee3",
+    "export_validation.json": "6a8436b63ab71248873136d6480a2bf2fbeb205108b4c9435c5066d8eb192f92",
+    "holdout_predictions.csv": "f4ea1753d044270e24498f9bd688ba81fba8debc77640d6c8b4455a681a1fb8f",
+    "model.joblib": "285e13f93347ccc3e65e2203a4f3089f77c6b13efc249ec63a7ba6597ab42411",
+    "model.json": "3dd43dd1a456a07fc4088042d38fd284629ffe004e2d22da322686fc0c90b1de",
+    "MODEL_CARD.md": "ac70afdc912dfc78392c3e8d5847a537e081978ee83f4ad37e4d19824bedb24a"
+  }
+}

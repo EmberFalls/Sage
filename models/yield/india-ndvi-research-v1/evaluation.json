@@ -1,0 +1,511 @@
+{
+  "model_version": "india-ndvi-research-v1",
+  "status": "RESEARCH_ONLY",
+  "operational_admission": false,
+  "source_class": "CY-Bench real historical district yields and MODIS NDVI; retrospective research",
+  "dataset": {
+    "record": "https://zenodo.org/records/13838912",
+    "version": "1.2",
+    "archive_url": "https://zenodo.org/api/records/13838912/files/cybench-data.zip/content",
+    "archive_size": 12652190560,
+    "files": [
+      {
+        "archive_path": "cybench-data/wheat/IN/yield_wheat_IN.csv",
+        "name": "yield_wheat_IN.csv",
+        "bytes": 784689,
+        "sha256": "94e11d44ea3504468d2303131b12f425e05a98fb8c68106d6b99d577c5d0283c"
+      },
+      {
+        "archive_path": "cybench-data/wheat/IN/ndvi_wheat_IN.csv",
+        "name": "ndvi_wheat_IN.csv",
+        "bytes": 26472273,
+        "sha256": "a6c6cdbd97f2953f98ae3ea6e5ddb6db65d6728f2e1dde63ca20dbb4f78255d0"
+      },
+      {
+        "archive_path": "cybench-data/wheat/IN/crop_calendar_wheat_IN.csv",
+        "name": "crop_calendar_wheat_IN.csv",
+        "bytes": 29926,
+        "sha256": "caa6bf45261b926eae4002f002e444603cefe78321ec17ca62b35fd9c6709cf9"
+      },
+      {
+        "archive_path": "cybench-data/wheat/IN/soil_wheat_IN.csv",
+        "name": "soil_wheat_IN.csv",
+        "bytes": 32426,
+        "sha256": "e781908b3f5c8bb063eb8c1db5b0d3e59e1c900b5cdc8701143cbe3be64ff272"
+      },
+      {
+        "archive_path": "cybench-data/maize/IN/crop_calendar_maize_IN.csv",
+        "name": "crop_calendar_maize_IN.csv",
+        "bytes": 30686,
+        "sha256": "420900771d3dc2e1a0825e64c22452adc55f6259b18b2414ddef3cc7f280bca0"
+      },
+      {
+        "archive_path": "cybench-data/maize/IN/ndvi_maize_IN.csv",
+        "name": "ndvi_maize_IN.csv",
+        "bytes": 26802957,
+        "sha256": "ada7b25b4c6d087036a952b794a8db571311da43df4e9afb46b8350ed3a89879"
+      },
+      {
+        "archive_path": "cybench-data/maize/IN/soil_maize_IN.csv",
+        "name": "soil_maize_IN.csv",
+        "bytes": 32792,
+        "sha256": "2074e6a87cabe45364a893cf96cbe1ac293631993107ab406b60905c307308f6"
+      },
+      {
+        "archive_path": "cybench-data/maize/IN/yield_maize_IN.csv",
+        "name": "yield_maize_IN.csv",
+        "bytes": 789588,
+        "sha256": "61dd362b8981c8f69e839d4fa86765ba8d7c88912494cbf2ff1c45c5d8872712"
+      }
+    ]
+  },
+  "source_statistics": "https://github.com/WUR-AI/AgML-CY-Bench/tree/main/data_preparation/crop_statistics_IN",
+  "license_context": "ICRISAT India yield source card specifies CC BY 4.0; respect constituent source terms.",
+  "geography": "India administrative districts by CY-Bench adm_id; no verified mapping to Sage demo borrowers",
+  "units": "t/ha",
+  "features": [
+    "adm_id",
+    "crop",
+    "year",
+    "season_days",
+    "sos_day",
+    "ndvi_mean",
+    "ndvi_max",
+    "ndvi_min",
+    "ndvi_std",
+    "ndvi_last",
+    "ndvi_slope",
+    "ndvi_count",
+    "awc",
+    "bulk_density",
+    "drainage_class",
+    "history_median",
+    "history_recent_median",
+    "history_trend"
+  ],
+  "prediction_horizon": "midseason, with assumed 7-day NDVI availability lag",
+  "intake": {
+    "source_yield_rows": 23781,
+    "rejected_rows": {
+      "missing_calendar": 263,
+      "invalid_yield": 0,
+      "missing_ndvi_before_cutoff": 9518,
+      "duplicate_yield": 0
+    }
+  },
+  "aligned_rows": 14000,
+  "district_count": 567,
+  "missing_numeric_features": {
+    "year": 0,
+    "season_days": 0,
+    "sos_day": 0,
+    "ndvi_mean": 0,
+    "ndvi_max": 0,
+    "ndvi_min": 0,
+    "ndvi_std": 0,
+    "ndvi_last": 0,
+    "ndvi_slope": 0,
+    "ndvi_count": 0,
+    "awc": 0,
+    "bulk_density": 0,
+    "drainage_class": 0
+  },
+  "splits": {
+    "initial_training_years": [
+      2001,
+      2002,
+      2003,
+      2004,
+      2005,
+      2006,
+      2007,
+      2008,
+      2009
+    ],
+    "validation_years": [
+      2011,
+      2012,
+      2013
+    ],
+    "final_fit_years": [
+      2001,
+      2002,
+      2003,
+      2004,
+      2005,
+      2006,
+      2007,
+      2008,
+      2009,
+      2010,
+      2011,
+      2012,
+      2013
+    ],
+    "holdout_years": [
+      2015,
+      2016,
+      2017
+    ],
+    "initial_training_rows": 7278,
+    "validation_rows": 2519,
+    "final_fit_rows": 10618,
+    "holdout_rows": 2528,
+    "historical_label_cap_for_validation": 2009,
+    "historical_label_cap_for_holdout": 2013
+  },
+  "validation_scores": {
+    "history_median": {
+      "rows": 2519,
+      "mae_t_per_ha": 0.784052383882493,
+      "rmse_t_per_ha": 1.16351607012723
+    },
+    "history_recent_median": {
+      "rows": 2519,
+      "mae_t_per_ha": 0.6283707105994443,
+      "rmse_t_per_ha": 0.9160169725371802
+    },
+    "history_trend": {
+      "rows": 2519,
+      "mae_t_per_ha": 0.6091259032976827,
+      "rmse_t_per_ha": 0.883549048681926
+    },
+    "ridge_1": {
+      "rows": 2519,
+      "mae_t_per_ha": 0.54439020292544,
+      "rmse_t_per_ha": 0.8084379905338691
+    },
+    "ridge_10": {
+      "rows": 2519,
+      "mae_t_per_ha": 0.5269917057675826,
+      "rmse_t_per_ha": 0.7890417602256553
+    },
+    "ridge_100": {
+      "rows": 2519,
+      "mae_t_per_ha": 0.520763213811294,
+      "rmse_t_per_ha": 0.779947187841473
+    },
+    "random_forest_leaf_5": {
+      "rows": 2519,
+      "mae_t_per_ha": 0.564514104076151,
+      "rmse_t_per_ha": 0.821649004177969
+    },
+    "random_forest_leaf_15": {
+      "rows": 2519,
+      "mae_t_per_ha": 0.5647833404247059,
+      "rmse_t_per_ha": 0.8206830375167985
+    },
+    "extra_trees_leaf_5": {
+      "rows": 2519,
+      "mae_t_per_ha": 0.5654451958438832,
+      "rmse_t_per_ha": 0.8183685910098066
+    },
+    "extra_trees_leaf_15": {
+      "rows": 2519,
+      "mae_t_per_ha": 0.5643127223798023,
+      "rmse_t_per_ha": 0.8179303499003465
+    }
+  },
+  "selected_model": "ridge_100",
+  "selected_baseline": "history_trend",
+  "holdout_scores": {
+    "ridge_100": {
+      "rows": 2528,
+      "mae_t_per_ha": 0.6935106000591003,
+      "rmse_t_per_ha": 1.0279348949205478
+    },
+    "history_trend": {
+      "rows": 2528,
+      "mae_t_per_ha": 0.6910741987989121,
+      "rmse_t_per_ha": 1.0667626599340436
+    }
+  },
+  "holdout_mae_improvement_fraction": -0.0035255277427845844,
+  "passes_accuracy_gate": false,
+  "seed": 20261009,
+  "dependencies": {
+    "sklearn": "1.7.2",
+    "numpy": "2.2.6",
+    "pandas": "2.2.3",
+    "joblib": "1.6.0"
+  },
+  "holdout_by_crop": {
+    "maize": {
+      "ridge_100": {
+        "rows": 1300,
+        "mae_t_per_ha": 0.8832174358718047,
+        "rmse_t_per_ha": 1.2946219248925237
+      },
+      "history_trend": {
+        "rows": 1300,
+        "mae_t_per_ha": 0.9267800716671825,
+        "rmse_t_per_ha": 1.3607365924606283
+      }
+    },
+    "wheat": {
+      "ridge_100": {
+        "rows": 1228,
+        "mae_t_per_ha": 0.49268088787952696,
+        "rmse_t_per_ha": 0.6331966542981278
+      },
+      "history_trend": {
+        "rows": 1228,
+        "mae_t_per_ha": 0.44154843761914725,
+        "rmse_t_per_ha": 0.6184820701635577
+      }
+    }
+  },
+  "holdout_by_state_code": {
+    "01": {
+      "ridge_100": {
+        "rows": 48,
+        "mae_t_per_ha": 1.4342336396138196,
+        "rmse_t_per_ha": 1.7776634394399573
+      },
+      "history_trend": {
+        "rows": 48,
+        "mae_t_per_ha": 1.5745343190709704,
+        "rmse_t_per_ha": 1.9572548011165072
+      }
+    },
+    "02": {
+      "ridge_100": {
+        "rows": 160,
+        "mae_t_per_ha": 0.7957582677392109,
+        "rmse_t_per_ha": 1.1774205332734078
+      },
+      "history_trend": {
+        "rows": 160,
+        "mae_t_per_ha": 0.8088263707532285,
+        "rmse_t_per_ha": 1.2117716143749384
+      }
+    },
+    "03": {
+      "ridge_100": {
+        "rows": 104,
+        "mae_t_per_ha": 0.6203503108392928,
+        "rmse_t_per_ha": 0.8100433332341535
+      },
+      "history_trend": {
+        "rows": 104,
+        "mae_t_per_ha": 0.47518206183678685,
+        "rmse_t_per_ha": 0.7159161690220992
+      }
+    },
+    "04": {
+      "ridge_100": {
+        "rows": 77,
+        "mae_t_per_ha": 0.6366682467076832,
+        "rmse_t_per_ha": 0.9710481829824474
+      },
+      "history_trend": {
+        "rows": 77,
+        "mae_t_per_ha": 0.546334628851567,
+        "rmse_t_per_ha": 0.9586762238842758
+      }
+    },
+    "05": {
+      "ridge_100": {
+        "rows": 130,
+        "mae_t_per_ha": 0.7976298873723395,
+        "rmse_t_per_ha": 0.996049046617201
+      },
+      "history_trend": {
+        "rows": 130,
+        "mae_t_per_ha": 0.7042207078296201,
+        "rmse_t_per_ha": 0.9385341621860422
+      }
+    },
+    "06": {
+      "ridge_100": {
+        "rows": 203,
+        "mae_t_per_ha": 0.6416629361069567,
+        "rmse_t_per_ha": 0.7891453085125876
+      },
+      "history_trend": {
+        "rows": 203,
+        "mae_t_per_ha": 0.9068759515891116,
+        "rmse_t_per_ha": 1.0722728709633345
+      }
+    },
+    "07": {
+      "ridge_100": {
+        "rows": 173,
+        "mae_t_per_ha": 0.8361630325062934,
+        "rmse_t_per_ha": 1.0070316300883937
+      },
+      "history_trend": {
+        "rows": 173,
+        "mae_t_per_ha": 0.5816240261187414,
+        "rmse_t_per_ha": 0.7795594008683719
+      }
+    },
+    "08": {
+      "ridge_100": {
+        "rows": 165,
+        "mae_t_per_ha": 0.3066632786444043,
+        "rmse_t_per_ha": 0.38718759556321636
+      },
+      "history_trend": {
+        "rows": 165,
+        "mae_t_per_ha": 0.494577722567095,
+        "rmse_t_per_ha": 0.6057291743195004
+      }
+    },
+    "09": {
+      "ridge_100": {
+        "rows": 104,
+        "mae_t_per_ha": 0.5852366384108897,
+        "rmse_t_per_ha": 0.7855279918777563
+      },
+      "history_trend": {
+        "rows": 104,
+        "mae_t_per_ha": 0.47036665458196186,
+        "rmse_t_per_ha": 0.7477252563046105
+      }
+    },
+    "10": {
+      "ridge_100": {
+        "rows": 164,
+        "mae_t_per_ha": 0.41005924720559966,
+        "rmse_t_per_ha": 0.5282017924080591
+      },
+      "history_trend": {
+        "rows": 164,
+        "mae_t_per_ha": 0.325239952885331,
+        "rmse_t_per_ha": 0.46534803393772745
+      }
+    },
+    "11": {
+      "ridge_100": {
+        "rows": 85,
+        "mae_t_per_ha": 2.2288950057339143,
+        "rmse_t_per_ha": 2.669638969005626
+      },
+      "history_trend": {
+        "rows": 85,
+        "mae_t_per_ha": 2.22185252258174,
+        "rmse_t_per_ha": 2.7194614723779247
+      }
+    },
+    "12": {
+      "ridge_100": {
+        "rows": 395,
+        "mae_t_per_ha": 0.4346587302213428,
+        "rmse_t_per_ha": 0.5610108133660096
+      },
+      "history_trend": {
+        "rows": 395,
+        "mae_t_per_ha": 0.41270772242612996,
+        "rmse_t_per_ha": 0.52669554335069
+      }
+    },
+    "13": {
+      "ridge_100": {
+        "rows": 84,
+        "mae_t_per_ha": 0.7327749387978321,
+        "rmse_t_per_ha": 0.9848206752829263
+      },
+      "history_trend": {
+        "rows": 84,
+        "mae_t_per_ha": 0.6419856515803328,
+        "rmse_t_per_ha": 0.9902664284980298
+      }
+    },
+    "14": {
+      "ridge_100": {
+        "rows": 151,
+        "mae_t_per_ha": 0.3592858893450882,
+        "rmse_t_per_ha": 0.47774204600713027
+      },
+      "history_trend": {
+        "rows": 151,
+        "mae_t_per_ha": 0.37270041069664284,
+        "rmse_t_per_ha": 0.4968296543949503
+      }
+    },
+    "15": {
+      "ridge_100": {
+        "rows": 110,
+        "mae_t_per_ha": 0.5501343218173094,
+        "rmse_t_per_ha": 0.6904416175843545
+      },
+      "history_trend": {
+        "rows": 110,
+        "mae_t_per_ha": 0.6563245712546815,
+        "rmse_t_per_ha": 0.8666100493752883
+      }
+    },
+    "16": {
+      "ridge_100": {
+        "rows": 75,
+        "mae_t_per_ha": 0.46255928852459555,
+        "rmse_t_per_ha": 0.575380514134249
+      },
+      "history_trend": {
+        "rows": 75,
+        "mae_t_per_ha": 0.45194210254109296,
+        "rmse_t_per_ha": 0.5805540791615468
+      }
+    },
+    "17": {
+      "ridge_100": {
+        "rows": 134,
+        "mae_t_per_ha": 0.8974796320019958,
+        "rmse_t_per_ha": 1.3067987058877004
+      },
+      "history_trend": {
+        "rows": 134,
+        "mae_t_per_ha": 0.9781513926061416,
+        "rmse_t_per_ha": 1.4835221229737339
+      }
+    },
+    "18": {
+      "ridge_100": {
+        "rows": 60,
+        "mae_t_per_ha": 0.5346122163156741,
+        "rmse_t_per_ha": 0.6451849702523993
+      },
+      "history_trend": {
+        "rows": 60,
+        "mae_t_per_ha": 0.484887357294686,
+        "rmse_t_per_ha": 0.5845848799289146
+      }
+    },
+    "19": {
+      "ridge_100": {
+        "rows": 8,
+        "mae_t_per_ha": 1.4004243659724995,
+        "rmse_t_per_ha": 1.594174506292582
+      },
+      "history_trend": {
+        "rows": 8,
+        "mae_t_per_ha": 1.0129684343287133,
+        "rmse_t_per_ha": 1.1973488684376545
+      }
+    },
+    "20": {
+      "ridge_100": {
+        "rows": 98,
+        "mae_t_per_ha": 1.5354110148186901,
+        "rmse_t_per_ha": 2.004877101917114
+      },
+      "history_trend": {
+        "rows": 98,
+        "mae_t_per_ha": 1.5713114716022236,
+        "rmse_t_per_ha": 2.104577876555736
+      }
+    }
+  },
+  "limitations": [
+    "Retrospective district estimates; not farm-level, production-approved, or calibrated credit probabilities.",
+    "Calendar is a static WorldCereal-derived crop-season estimate, not dated district sowing observations.",
+    "Dataset/calendar/soil versions may postdate historical forecast origins; historical publication times are unknown.",
+    "NDVI has a fixed assumed 7-day availability lag, not verified publication timestamps.",
+    "Yields have an assumed two-year reporting lag; held-out labels never enter validation or holdout features.",
+    "Weather, forecast, irrigation and stage-shock effects are not learned by this NDVI model.",
+    "No prediction intervals or empirical interval coverage are claimed.",
+    "2026 temporal extrapolation and Maharashtra/Pune borrower matching require further validation.",
+    "Latest three years evaluated once after model selection on earlier validation years."
+  ]
+}
