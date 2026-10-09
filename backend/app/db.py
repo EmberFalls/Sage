@@ -3,6 +3,7 @@ import json
 import hashlib
 import os
 import sqlite3
+from uuid import uuid4
 from contextlib import contextmanager
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
@@ -42,6 +43,39 @@ def _connect():
         request_json TEXT NOT NULL,
         result_json TEXT NOT NULL,
         created_at TEXT NOT NULL
+    )""")
+    con.execute("""CREATE TABLE IF NOT EXISTS warning_evidence (
+        derivation_key TEXT PRIMARY KEY,
+        assessment_id TEXT NOT NULL,
+        rule TEXT NOT NULL,
+        rule_version TEXT NOT NULL,
+        evidence_json TEXT NOT NULL,
+        created_at TEXT NOT NULL
+    )""")
+    con.execute("""CREATE TABLE IF NOT EXISTS intervention_proposals (
+        proposal_id TEXT PRIMARY KEY,
+        comparison_id TEXT NOT NULL,
+        candidate_id TEXT NOT NULL,
+        assessment_id TEXT NOT NULL,
+        scenario_id TEXT NOT NULL,
+        status TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        review_history_json TEXT NOT NULL,
+        applied_simulation_json TEXT
+    )""")
+    con.execute("""CREATE TABLE IF NOT EXISTS warning_tasks (
+        derivation_key TEXT PRIMARY KEY, status TEXT NOT NULL, assigned_to TEXT,
+        created_at TEXT NOT NULL, updated_at TEXT NOT NULL
+    )""")
+    con.execute("""CREATE TABLE IF NOT EXISTS warning_task_events (
+        event_id TEXT PRIMARY KEY, derivation_key TEXT NOT NULL, operation TEXT NOT NULL,
+        actor TEXT NOT NULL, reason TEXT NOT NULL, assigned_to TEXT, superseded_by TEXT,
+        created_at TEXT NOT NULL, FOREIGN KEY(derivation_key) REFERENCES warning_tasks(derivation_key)
+    )""")
+    con.execute("""CREATE TABLE IF NOT EXISTS allocation_snapshots (
+        allocation_id TEXT PRIMARY KEY, branch_id TEXT NOT NULL, input_json TEXT NOT NULL,
+        result_json TEXT NOT NULL, created_at TEXT NOT NULL
     )""")
     con.execute("""CREATE TABLE IF NOT EXISTS comparison_bundles (
         bundle_id TEXT PRIMARY KEY, context_hash TEXT NOT NULL, bundle_json TEXT NOT NULL, created_at TEXT NOT NULL
@@ -278,6 +312,21 @@ def _snapshot_content_hash(result: dict) -> str:
 
 def save_scenario(scenario_id: str, borrower_id: str, input_hash: str, request: dict, result: dict) -> dict:
     with _connect() as con:
+        for warning in result.get("debt_warnings", []):
+            record = warning.get("evidence_record", {})
+            key = warning.get("derivation_key")
+            if key:
+                inserted = con.execute("""INSERT OR IGNORE INTO warning_evidence
+                    (derivation_key, assessment_id, rule, rule_version, evidence_json, created_at)
+                    VALUES (?, ?, ?, ?, ?, ?)""",
+                    (key, record.get("assessment_id", scenario_id), warning.get("id", "unknown"),
+                     warning.get("rule_version", "unknown"), _canonical_json({"warning": warning, "record": record}),
+                     datetime.now(timezone.utc).isoformat())).rowcount
+                now = datetime.now(timezone.utc).isoformat()
+                task_inserted = con.execute("INSERT OR IGNORE INTO warning_tasks VALUES (?, 'open', NULL, ?, ?)", (key, now, now)).rowcount
+                if inserted or task_inserted:
+                    con.execute("INSERT OR IGNORE INTO warning_task_events VALUES (?, ?, 'created', 'system', 'F7 evidence persisted', NULL, NULL, ?)",
+                                ("WE-" + uuid4().hex, key, now))
         existing = con.execute("SELECT 1 FROM scenario_snapshots WHERE scenario_id=?", (scenario_id,)).fetchone()
         if existing is None:
             prior_rows = con.execute("SELECT scenario_id, request_json FROM scenario_snapshots WHERE borrower_id=? ORDER BY created_at DESC", (borrower_id,)).fetchall()
@@ -300,6 +349,169 @@ def save_scenario(scenario_id: str, borrower_id: str, input_hash: str, request: 
     if supersession:
         stored["supersedes_id"] = supersession["supersedes_id"]
     return stored
+
+
+def list_warning_evidence(limit: int = 200) -> list[dict]:
+    """F7 immutable derivation evidence feed; F9 may layer assignment and lifecycle state."""
+    with _connect() as con:
+        rows = con.execute("SELECT * FROM warning_evidence ORDER BY created_at DESC LIMIT ?", (limit,)).fetchall()
+    return [{"derivation_key": row["derivation_key"], "assessment_id": row["assessment_id"],
+             "rule": row["rule"], "rule_version": row["rule_version"],
+             "created_at": row["created_at"], **json.loads(row["evidence_json"])} for row in rows]
+
+
+def get_warning_evidence(derivation_key: str) -> dict | None:
+    with _connect() as con:
+        row = con.execute("SELECT * FROM warning_evidence WHERE derivation_key=?", (derivation_key,)).fetchone()
+    if row is None:
+        return None
+    return {"derivation_key": row["derivation_key"], "assessment_id": row["assessment_id"],
+            "rule": row["rule"], "rule_version": row["rule_version"], "created_at": row["created_at"],
+            **json.loads(row["evidence_json"])}
+
+
+def get_warning_task(derivation_key: str) -> dict | None:
+    with _connect() as con:
+        task = con.execute("SELECT * FROM warning_tasks WHERE derivation_key=?", (derivation_key,)).fetchone()
+        events = con.execute("SELECT * FROM warning_task_events WHERE derivation_key=? ORDER BY created_at, event_id", (derivation_key,)).fetchall()
+    if task is None:
+        return None
+    return {"derivation_key": task["derivation_key"], "status": task["status"], "assigned_to": task["assigned_to"],
+            "created_at": task["created_at"], "updated_at": task["updated_at"],
+            "history": [dict(row) for row in events]}
+
+
+def ensure_warning_task(derivation_key: str) -> dict | None:
+    evidence = get_warning_evidence(derivation_key)
+    if evidence is None:
+        return None
+    now = datetime.now(timezone.utc).isoformat()
+    with _connect() as con:
+        inserted = con.execute("INSERT OR IGNORE INTO warning_tasks VALUES (?, 'open', NULL, ?, ?)",
+                               (derivation_key, now, now)).rowcount
+        if inserted:
+            con.execute("INSERT INTO warning_task_events VALUES (?, ?, 'created', 'system', 'Task created from persisted F7 evidence', NULL, NULL, ?)",
+                        ("WE-" + uuid4().hex, derivation_key, now))
+    return get_warning_task(derivation_key)
+
+
+def transition_warning_task(derivation_key: str, *, operation: str, actor: str, reason: str,
+                            assigned_to: str | None = None, superseded_by: str | None = None) -> dict:
+    now = datetime.now(timezone.utc).isoformat()
+    transitions = {
+        "open": {"assign": "assigned", "acknowledge": "acknowledged", "resolve": "resolved", "supersede": "superseded"},
+        "assigned": {"assign": "assigned", "acknowledge": "acknowledged", "resolve": "resolved", "supersede": "superseded"},
+        "acknowledged": {"assign": "assigned", "resolve": "resolved", "reopen": "reopened", "supersede": "superseded"},
+        "resolved": {"reopen": "reopened", "supersede": "superseded"},
+        "reopened": {"assign": "assigned", "acknowledge": "acknowledged", "resolve": "resolved", "supersede": "superseded"},
+        "superseded": {},
+    }
+    with _connect() as con:
+        row = con.execute("SELECT status, assigned_to FROM warning_tasks WHERE derivation_key=?", (derivation_key,)).fetchone()
+        if row is None:
+            raise KeyError("Warning task not found")
+        if operation not in transitions.get(row["status"], {}):
+            raise ValueError(f"Invalid warning workflow transition: {row['status']} -> {operation}")
+        if operation == "assign" and not (assigned_to and assigned_to.strip()):
+            raise ValueError("Assignment requires an assignee")
+        if operation == "supersede":
+            if not superseded_by or superseded_by == derivation_key:
+                raise ValueError("Supersede requires a different warning derivation key")
+            old = con.execute("SELECT rule FROM warning_evidence WHERE derivation_key=?", (derivation_key,)).fetchone()
+            new = con.execute("SELECT rule FROM warning_evidence WHERE derivation_key=?", (superseded_by,)).fetchone()
+            if new is None or old["rule"] != new["rule"]:
+                raise ValueError("Replacement warning evidence must exist and use the same rule")
+        status = transitions[row["status"]][operation]
+        next_assignee = assigned_to.strip() if operation == "assign" and assigned_to else (None if operation == "reopen" else row["assigned_to"])
+        con.execute("UPDATE warning_tasks SET status=?, assigned_to=?, updated_at=? WHERE derivation_key=?",
+                    (status, next_assignee, now, derivation_key))
+        con.execute("INSERT INTO warning_task_events VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                    ("WE-" + uuid4().hex, derivation_key, operation, actor, reason,
+                     assigned_to if operation == "assign" else None, superseded_by, now))
+    return get_warning_task(derivation_key)
+
+
+def save_allocation_snapshot(allocation_id: str, branch_id: str, input_snapshot: dict, result_snapshot: dict) -> dict:
+    now = datetime.now(timezone.utc).isoformat()
+    with _connect() as con:
+        con.execute("INSERT OR IGNORE INTO allocation_snapshots VALUES (?, ?, ?, ?, ?)",
+            (allocation_id, branch_id, _canonical_json(input_snapshot), _canonical_json(result_snapshot), now))
+        row = con.execute("SELECT * FROM allocation_snapshots WHERE allocation_id=?", (allocation_id,)).fetchone()
+    return {"allocation_id": row["allocation_id"], "branch_id": row["branch_id"],
+            "input_snapshot": json.loads(row["input_json"]), "result_snapshot": json.loads(row["result_json"]),
+            "created_at": row["created_at"]}
+
+
+def get_allocation_snapshot(allocation_id: str) -> dict | None:
+    with _connect() as con:
+        row = con.execute("SELECT * FROM allocation_snapshots WHERE allocation_id=?", (allocation_id,)).fetchone()
+    if row is None:
+        return None
+    return {"allocation_id": row["allocation_id"], "branch_id": row["branch_id"],
+            "input_snapshot": json.loads(row["input_json"]), "result_snapshot": json.loads(row["result_json"]),
+            "created_at": row["created_at"]}
+
+
+def list_allocation_snapshots(branch_id: str | None = None, limit: int = 50) -> list[dict]:
+    with _connect() as con:
+        if branch_id:
+            rows = con.execute("SELECT allocation_id FROM allocation_snapshots WHERE branch_id=? ORDER BY created_at DESC LIMIT ?",
+                               (branch_id, max(1, min(limit, 250)))).fetchall()
+        else:
+            rows = con.execute("SELECT allocation_id FROM allocation_snapshots ORDER BY created_at DESC LIMIT ?",
+                               (max(1, min(limit, 250)),)).fetchall()
+    return [get_allocation_snapshot(row[0]) for row in rows]
+
+
+def create_intervention_proposal(*, comparison_id: str, candidate_id: str, assessment_id: str,
+                                 scenario_id: str, actor: str, reason: str) -> dict:
+    now = datetime.now(timezone.utc).isoformat()
+    proposal_id = "IP-" + uuid4().hex[:16].upper()
+    history = [{"status": "proposed", "actor": actor, "reason": reason, "assessment_id": assessment_id,
+                "at": now, "event": "proposal_created"}]
+    with _connect() as con:
+        con.execute("""INSERT INTO intervention_proposals
+            (proposal_id, comparison_id, candidate_id, assessment_id, scenario_id, status, created_at, updated_at,
+             review_history_json, applied_simulation_json) VALUES (?, ?, ?, ?, ?, 'proposed', ?, ?, ?, NULL)""",
+            (proposal_id, comparison_id, candidate_id, assessment_id, scenario_id, now, now, _canonical_json(history)))
+    return get_intervention_proposal(proposal_id)
+
+
+def get_intervention_proposal(proposal_id: str) -> dict | None:
+    with _connect() as con:
+        row = con.execute("SELECT * FROM intervention_proposals WHERE proposal_id=?", (proposal_id,)).fetchone()
+    if row is None:
+        return None
+    return {"proposal_id": row["proposal_id"], "comparison_id": row["comparison_id"],
+            "candidate_id": row["candidate_id"], "assessment_id": row["assessment_id"],
+            "scenario_id": row["scenario_id"], "status": row["status"], "created_at": row["created_at"],
+            "updated_at": row["updated_at"], "review_history": json.loads(row["review_history_json"]),
+            "applied_simulation": json.loads(row["applied_simulation_json"]) if row["applied_simulation_json"] else None}
+
+
+def list_intervention_proposals(limit: int = 100) -> list[dict]:
+    with _connect() as con:
+        ids = [row[0] for row in con.execute("SELECT proposal_id FROM intervention_proposals ORDER BY created_at DESC LIMIT ?", (max(1, min(limit, 250)),))]
+    return [get_intervention_proposal(proposal_id) for proposal_id in ids]
+
+
+def transition_intervention_proposal(proposal_id: str, *, status: str, actor: str, reason: str,
+                                     allowed_transitions: dict, applied_simulation: dict | None = None) -> dict | None:
+    now = datetime.now(timezone.utc).isoformat()
+    with _connect() as con:
+        row = con.execute("SELECT * FROM intervention_proposals WHERE proposal_id=?", (proposal_id,)).fetchone()
+        if row is None:
+            return None
+        old_status = row["status"]
+        if status not in allowed_transitions.get(old_status, []):
+            raise ValueError(f"Invalid intervention review transition: {old_status} -> {status}")
+        history = json.loads(row["review_history_json"])
+        history.append({"status": status, "actor": actor, "reason": reason,
+                        "assessment_id": row["assessment_id"], "at": now, "event": "review_transition"})
+        con.execute("""UPDATE intervention_proposals SET status=?, updated_at=?, review_history_json=?, applied_simulation_json=?
+            WHERE proposal_id=? AND status=?""",
+            (status, now, _canonical_json(history), _canonical_json(applied_simulation) if applied_simulation else row["applied_simulation_json"], proposal_id, old_status))
+    return get_intervention_proposal(proposal_id)
 
 
 def get_scenario(scenario_id: str) -> dict | None:
@@ -402,6 +614,13 @@ def get_comparison_bundle(bundle_id: str) -> dict | None:
     if supersession:
         saved["supersedes_bundle_id"] = supersession["supersedes_bundle_id"]
     return saved
+
+
+def list_comparison_bundles(limit: int = 100) -> list[dict]:
+    with _connect() as con:
+        ids = [row[0] for row in con.execute("SELECT bundle_id FROM comparison_bundles ORDER BY created_at DESC LIMIT ?",
+                                             (max(1, min(limit, 500)),))]
+    return [get_comparison_bundle(bundle_id) for bundle_id in ids]
 
 
 def list_scenarios(limit: int = 50) -> list[dict]:

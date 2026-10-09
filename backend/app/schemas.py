@@ -23,6 +23,72 @@ class ScenarioRequest(BaseModel):
     loan_principal_override_inr: Annotated[Decimal, Field(gt=0, le=Decimal("100000000"))] | None = None
     overrides: Overrides = Field(default_factory=Overrides)
     action_id: Literal["reschedule_30d", "split_payment", "none"] = "none"
+    action_parameters: dict[str, Any] = Field(default_factory=dict)
+
+
+class InterventionEvaluationRequest(ScenarioRequest):
+    action_inputs: dict[str, Any] = Field(default_factory=dict)
+
+
+class InterventionProposalCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+    comparison_id: str = Field(min_length=1, max_length=80)
+    candidate_id: str = Field(min_length=1, max_length=120)
+    actor: str = Field(min_length=2, max_length=120)
+    reason: str = Field(min_length=3, max_length=1000)
+
+
+class InterventionReviewUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+    status: Literal["under_review", "approved_in_demo", "rejected_in_demo"]
+    actor: str = Field(min_length=2, max_length=120)
+    reason: str = Field(min_length=3, max_length=1000)
+
+
+class FrozenAllocationCandidate(BaseModel):
+    model_config = ConfigDict(extra="forbid", allow_inf_nan=False, str_strip_whitespace=True)
+    candidate_id: str = Field(min_length=1, max_length=160)
+    borrower_id: str = Field(min_length=1, max_length=100)
+    branch_id: str = Field(min_length=1, max_length=100)
+    scenario_id: str = Field(min_length=1, max_length=100)
+    comparison_id: str = Field(min_length=1, max_length=100)
+    action_candidate_id: str = Field(min_length=1, max_length=160)
+    scenario_context_hash: str = Field(min_length=16, max_length=128)
+    policy_version: str = Field(min_length=1, max_length=100)
+    engine_version: str = Field(min_length=1, max_length=100)
+    cost_inr: Decimal
+    cost_date: date | None = None
+    benefit_value: Decimal | None = None
+    benefit_definition: str | None = Field(default=None, max_length=100)
+    benefit_unit: str | None = Field(default=None, max_length=100)
+    coverage_tags: list[str] = Field(default_factory=list, max_length=20)
+
+
+class AllocationRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid", allow_inf_nan=False)
+    branch_id: str = Field(min_length=1, max_length=100)
+    budget_inr: Decimal = Field(ge=0, le=Decimal("100000000"))
+    candidates: list[FrozenAllocationCandidate] = Field(min_length=0, max_length=250)
+    coverage_enabled: bool = False
+    coverage_floors: dict[str, int] = Field(default_factory=dict, max_length=20)
+    timeout_ms: int = Field(default=500, ge=1, le=5000)
+
+    @model_validator(mode="after")
+    def validate_coverage(self):
+        if not self.coverage_enabled and self.coverage_floors:
+            raise ValueError("Coverage floors require coverage_enabled=true")
+        if any(value < 0 for value in self.coverage_floors.values()):
+            raise ValueError("Coverage floors must be non-negative counts")
+        return self
+
+
+class WarningWorkflowUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+    operation: Literal["assign", "acknowledge", "resolve", "reopen", "supersede"]
+    actor: str = Field(min_length=2, max_length=120)
+    reason: str = Field(min_length=3, max_length=1000)
+    assigned_to: str | None = Field(default=None, min_length=2, max_length=120)
+    superseded_by: str | None = Field(default=None, min_length=16, max_length=200)
 
 
 class ScenarioBundle(BaseModel):
@@ -46,6 +112,7 @@ class ScenarioBundle(BaseModel):
     comparison_deltas: dict[str, Any]
     repayment_bridge: dict[str, Any]
     debt_cycle: list[dict[str, Any]]
+    debt_worlds: dict[str, Any] = Field(default_factory=dict)
     debt_warnings: list[dict[str, Any]]
     input_data_status: dict[str, list[str]]
     risk_semantics: str
