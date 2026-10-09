@@ -114,11 +114,11 @@ export function HeroSection({ onNavigate }: HeroSectionProps) {
               <div className="hero-card-header">
                 <div className="hero-card-title-group">
                   <h3 className="hero-card-title">Climate snapshot</h3>
-                  <span className="hero-card-subtitle">TELEMETRY · PUNE REGION</span>
+                  <span className="hero-card-subtitle">ILLUSTRATIVE · PUNE REGION</span>
                 </div>
                 <div className="hero-card-live-chip">
                   <span className="hero-pulse-dot" />
-                  <span>LIVE</span>
+                  <span>DEMO</span>
                 </div>
               </div>
 
@@ -173,9 +173,9 @@ export function HeroSection({ onNavigate }: HeroSectionProps) {
               <div className="hero-card-header">
                 <div className="hero-card-title-group">
                   <h3 className="hero-card-title">Borrower outlook</h3>
-                  <span className="hero-card-subtitle">PORTFOLIO RISK PROFILE</span>
+                  <span className="hero-card-subtitle">ILLUSTRATIVE RISK PROFILE</span>
                 </div>
-                <span className="hero-id-tag">B-DEMO-001</span>
+                <span className="hero-id-tag">DEMO EXAMPLE</span>
               </div>
 
               <div className="hero-borrower-body">

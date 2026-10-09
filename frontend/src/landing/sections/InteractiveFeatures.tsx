@@ -83,7 +83,7 @@ export function InteractiveFeatures({ onNavigate }: InteractiveFeaturesProps) {
             <div className="tab-pane-grid">
               <div className="tab-pane-info">
                 <span className="tab-eyebrow">MODULE 01 · PHENOLOGY MODELING</span>
-                <h3 className="tab-title">Stage-Specific Sensitivity Calibration</h3>
+                <h3 className="tab-title">Illustrative Stage Sensitivity Rules</h3>
                 <p className="tab-desc">
                   Sage models crop growth in 5 distinct phenological windows (Planting, Vegetative, Flowering, Grain Fill, Harvest). High heat during flowering carries a 1.0× peak sensitivity multiplier compared to 0.25× during harvest.
                 </p>

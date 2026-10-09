@@ -15,10 +15,10 @@ import {
   Sprout,
   AlertCircle
 } from 'lucide-react'
-import { useAuth } from './AuthContext'
+import { type User, useAuth } from './AuthContext'
 
 interface LoginPageProps {
-  onSuccess: () => void
+  onSuccess: (user: User) => void
   onBack: () => void
 }
 
@@ -50,7 +50,7 @@ export function LoginPage({ onSuccess, onBack }: LoginPageProps) {
     window.setTimeout(() => setToast(null), 2500)
   }
 
-  const handleCopyAndFill = (type: 'bank' | 'insurance' | 'farmer1' | 'farmer2') => {
+  const handleCopyAndFill = async (type: 'bank' | 'insurance' | 'farmer1' | 'farmer2') => {
     setError('')
     setSuccessMsg('')
     setCopiedPill(type)
@@ -68,22 +68,23 @@ export function LoginPage({ onSuccess, onBack }: LoginPageProps) {
       setPassword('password123')
       navigator.clipboard?.writeText('Email: agent@insurance.demo\nPassword: password123')
       showToast('Copied Insurance Underwriter credentials & filled form')
-    } else if (type === 'farmer1') {
+    } else {
+      const demoPhone = type === 'farmer1' ? '9876543210' : '9876543211'
       setTab('farmer')
-      setPhone('9876543210')
-      setOtpSent(true)
-      setDemoOtpHint('654321')
-      setOtp('654321')
-      navigator.clipboard?.writeText('Phone: 9876543210\nOTP: 654321')
-      showToast('Copied Farmer (Nashik) credentials & filled OTP')
-    } else if (type === 'farmer2') {
-      setTab('farmer')
-      setPhone('9876543211')
-      setOtpSent(true)
-      setDemoOtpHint('789123')
-      setOtp('789123')
-      navigator.clipboard?.writeText('Phone: 9876543211\nOTP: 789123')
-      showToast('Copied Farmer (Pune) credentials & filled OTP')
+      setPhone(demoPhone)
+      setOtpSent(false)
+      setLoading(true)
+      try {
+        const result = await sendOtp(demoPhone)
+        setDemoOtpHint(result.otp)
+        setOtp(result.otp)
+        setOtpSent(true)
+        showToast('Demo OTP generated & filled')
+      } catch (err: any) {
+        setError(err.message || 'Could not create demo OTP session')
+      } finally {
+        setLoading(false)
+      }
     }
   }
 
@@ -92,8 +93,8 @@ export function LoginPage({ onSuccess, onBack }: LoginPageProps) {
     setError('')
     setLoading(true)
     try {
-      await loginWithPassword(email, password)
-      onSuccess()
+      const authenticatedUser = await loginWithPassword(email, password)
+      onSuccess(authenticatedUser)
     } catch (err: any) {
       setError(err.message || 'Invalid credentials. Please verify.')
     } finally {
@@ -125,8 +126,8 @@ export function LoginPage({ onSuccess, onBack }: LoginPageProps) {
     setError('')
     setLoading(true)
     try {
-      await verifyOtp(phone, otp)
-      onSuccess()
+      const authenticatedUser = await verifyOtp(phone, otp)
+      onSuccess(authenticatedUser)
     } catch (err: any) {
       setError(err.message || 'Invalid or expired OTP.')
     } finally {

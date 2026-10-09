@@ -2,7 +2,7 @@ import os
 from pathlib import Path
 
 # Auto-load .env from backend directory
-_env_path = Path(__file__).resolve().parents[2] / ".env"
+_env_path = Path(__file__).resolve().parents[1] / ".env"
 if _env_path.exists():
     try:
         from dotenv import load_dotenv

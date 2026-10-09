@@ -77,7 +77,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setIsLoading(false)
       return
     }
+    let cancelled = false
+    const controller = new AbortController()
+    setIsLoading(true)
     fetch(`${API_BASE}/api/auth/me`, {
+      signal: controller.signal,
       headers: { Authorization: `Bearer ${token}` },
     })
       .then((res) => {
@@ -85,15 +89,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return res.json()
       })
       .then((me: User) => {
+        if (cancelled) return
         setUser(me)
         localStorage.setItem('sage_user', JSON.stringify(me))
       })
       .catch(() => {
-        logout()
+        if (!cancelled) logout()
       })
       .finally(() => {
-        setIsLoading(false)
+        if (!cancelled) setIsLoading(false)
       })
+    return () => { cancelled = true; controller.abort() }
   }, [token])
 
   const loginWithPassword = async (email: string, password: string): Promise<User> => {

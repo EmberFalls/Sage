@@ -158,15 +158,17 @@ def verify_farmer_otp(req: OTPVerifyRequest):
         )
 
     user = get_user_by_phone(phone)
+    if user and not user.get("is_active"):
+        raise HTTPException(status_code=403, detail="Account is inactive.")
     if not user:
         # First time farmer login -> auto register
         farmer_name = req.name or f"Farmer (+91 {phone[-4:]})"
         # If demo phone matches known records, link automatically
         linked_id = req.linked_borrower_id
         if not linked_id:
-            if phone.endswith("3210"):
+            if phone == "9876543210":
                 linked_id = "B-DEMO-001"
-            elif phone.endswith("3211"):
+            elif phone == "9876543211":
                 linked_id = "B-DEMO-002"
 
         user = create_user(
@@ -231,7 +233,7 @@ def list_demo_accounts():
             name="Rajesh Varma",
             email="agent@insurance.demo",
             password="password123",
-            description="Read-only portfolio risk & climate vulnerability monitoring",
+            description="Demo portfolio risk & climate vulnerability monitoring; production role restrictions are not enabled",
         ),
         DemoAccount(
             role="farmer",

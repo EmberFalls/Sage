@@ -1,4 +1,4 @@
-import random
+import secrets
 import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Optional
@@ -61,7 +61,7 @@ def get_user_by_id(user_id: str) -> Optional[dict]:
 
 def get_user_by_email(email: str) -> Optional[dict]:
     with _connect() as con:
-        row = con.execute("SELECT * FROM users WHERE LOWER(email) = LOWER(?)", (email,)).fetchone()
+        row = con.execute("SELECT * FROM users WHERE LOWER(email) = LOWER(?)", (email.strip().lower(),)).fetchone()
         return dict(row) if row else None
 
 
@@ -104,7 +104,7 @@ def create_otp_session(phone: str) -> tuple[str, str, int]:
     elif clean_phone == "9876543211":
         otp = "789123"
     else:
-        otp = f"{random.randint(100000, 999999)}"
+        otp = f"{100000 + secrets.randbelow(900000)}"
 
     session_id = f"OTP-{uuid.uuid4().hex[:8]}"
     otp_hash = hash_password(otp)
@@ -112,6 +112,7 @@ def create_otp_session(phone: str) -> tuple[str, str, int]:
     created_at = datetime.now(timezone.utc).isoformat()
 
     with _connect() as con:
+        con.execute("UPDATE otp_sessions SET used = 1 WHERE phone = ?", (clean_phone,))
         con.execute(
             """INSERT INTO otp_sessions (id, phone, otp_hash, expires_at, used, created_at)
                VALUES (?, ?, ?, ?, 0, ?)""",
@@ -130,32 +131,32 @@ def verify_otp(phone: str, raw_otp: str) -> bool:
     with _connect() as con:
         # Get latest unused and unexpired OTP session for this phone
         row = con.execute(
-            """SELECT id, otp_hash, expires_at FROM otp_sessions 
-               WHERE phone = ? AND used = 0 AND expires_at > ?
+            """SELECT id, otp_hash, expires_at, used FROM otp_sessions
+               WHERE phone = ?
                ORDER BY created_at DESC LIMIT 1""",
-            (clean_phone, now_iso),
+            (clean_phone,),
         ).fetchone()
 
-        if not row:
+        if not row or row["used"] or row["expires_at"] <= now_iso:
             return False
 
         if verify_password(raw_otp.strip(), row["otp_hash"]):
             # Mark session as used
-            con.execute("UPDATE otp_sessions SET used = 1 WHERE id = ?", (row["id"],))
-            return True
+            consumed = con.execute("UPDATE otp_sessions SET used = 1 WHERE id = ? AND used = 0", (row["id"],))
+            return consumed.rowcount == 1
 
     return False
 
 
 def seed_demo_users():
     """Idempotently seed default demo users for the 3 roles."""
-    with _connect() as con:
-        existing = con.execute("SELECT COUNT(*) FROM users").fetchone()[0]
-        if existing > 0:
-            return
+    def ensure_user(**fields):
+        existing = get_user_by_email(fields['email']) if fields.get('email') else get_user_by_phone(fields['phone'])
+        if not existing:
+            create_user(**fields)
 
     # Seed 1: Bank Credit Officer
-    create_user(
+    ensure_user(
         role="bank_officer",
         name="Aditi Rao (Credit Officer)",
         email="officer@bank.demo",
@@ -163,7 +164,7 @@ def seed_demo_users():
     )
 
     # Seed 2: Agricultural Insurance Underwriter
-    create_user(
+    ensure_user(
         role="insurance_agent",
         name="Rajesh Varma (Agri Insurer)",
         email="agent@insurance.demo",
@@ -171,7 +172,7 @@ def seed_demo_users():
     )
 
     # Seed 3: Farmer Ramesh Patil (Linked to B-DEMO-001)
-    create_user(
+    ensure_user(
         role="farmer",
         name="Ramesh Patil (Nashik Wheat Farmer)",
         phone="9876543210",
@@ -179,7 +180,7 @@ def seed_demo_users():
     )
 
     # Seed 4: Farmer Sunita Bai (Linked to B-DEMO-002)
-    create_user(
+    ensure_user(
         role="farmer",
         name="Sunita Bai (Pune Maize Farmer)",
         phone="9876543211",
