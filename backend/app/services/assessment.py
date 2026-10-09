@@ -371,7 +371,8 @@ def build_dated_ledger(b: dict, revenue: Decimal, sale_date: date, schedule: lis
             "bank_total_due_inr": money(sum(p["bank_due_inr"] for p in payments)), "season_end": season_end.isoformat()}
 
 
-def _assessment(b: dict, req: ScenarioRequest, *, shock: bool, action: str = "none") -> dict:
+def _assessment(b: dict, req: ScenarioRequest, *, shock: bool, action: str = "none",
+                model_artifact: dict | None = None) -> dict:
     o = req.overrides
     stage = o.heatwave_growth_stage if shock else "flowering"
     heat, rain, price_delta = (o.heatwave_days, o.rainfall_change_pct, o.market_price_change_pct) if shock else (0, 0, 0)
@@ -401,7 +402,12 @@ def _assessment(b: dict, req: ScenarioRequest, *, shock: bool, action: str = "no
         heat_stage=stage if shock else None, heat_days=heat if shock else 0,
         rainfall_change_pct=rain if shock else 0, irrigation_fraction=float(irrigation))
     stress_features = {name: response["stages"][name]["stress_index"] for name in STAGE_NAMES}
-    yield_value = (b["yield_t_per_ha"] * (1 - response["combined_loss_fraction"])).quantize(D("0.0001"))
+    if model_artifact and model_artifact.get("artifact"):
+        from app.services.model_registry import predict_fixture
+        yield_value = D(str(predict_fixture(model_artifact, float(b["yield_t_per_ha"]),
+                                             float(response["combined_loss_fraction"])))).quantize(D("0.0001"))
+    else:
+        yield_value = (b["yield_t_per_ha"] * (1 - response["combined_loss_fraction"])).quantize(D("0.0001"))
     production = yield_value * D(str(b["area_ha"]))
     price = money(b["price_inr_per_quintal"] * (1 + D(str(price_delta)) / 100))
     revenue = money(production * 10 * price * b["sale_fraction"])
@@ -450,7 +456,7 @@ def _assessment(b: dict, req: ScenarioRequest, *, shock: bool, action: str = "no
             "stage_stress": stress_features, "stage_weather_features": stage_weather, "crop_stages": stages,
             "crop_calendar": {**CALENDAR_PROVENANCE, "crop": b["crop"], "declared_geography": b["district"], "sowing_date": b["sowing_date"], "harvest_date": b["harvest_date"], "season_days": (b["harvest_date"]-b["sowing_date"]).days + 1, "ordered": True, "overlap_policy": "none; season-relative partition", "short_season_policy": "leave stages without a day unavailable"},
             "reanalysis": reanalysis,
-            "yield_projection": {"value": yield_value, "unit": "t/ha", "source_class": "illustrative_rule", "version": response["rule_version"], "status": response["status"], "limitations": response["limitations"], "combined_loss_fraction": response["combined_loss_fraction"]},
+            "yield_projection": {"value": yield_value, "unit": "t/ha", "source_class": "illustrative_fixture" if model_artifact and model_artifact.get("artifact") else "illustrative_rule", "version": model_artifact["artifact"]["model_version"] if model_artifact and model_artifact.get("artifact") else response["rule_version"], "status": "fixture_only_not_empirical" if model_artifact and model_artifact.get("artifact") else response["status"], "artifact_status": model_artifact.get("status") if model_artifact else "illustrative_fallback", "artifact_reason": model_artifact.get("reason") if model_artifact else None, "limitations": response["limitations"], "combined_loss_fraction": response["combined_loss_fraction"]},
             "heat_event": {"stage": stage, "start_date": event_start.isoformat() if heat else None,
                            "end_date": (event_start + timedelta(days=heat - 1)).isoformat() if heat else None, "duration_days": heat,
                            "source_class": "hypothetical_scenario" if heat else "none"},
@@ -830,8 +836,14 @@ def derive_feasibility_detail(stress: dict, b: dict) -> dict:
     }
 
 
-def evaluate_scenario(req: ScenarioRequest) -> dict:
+def evaluate_scenario(req: ScenarioRequest, model_artifact_id: str | None = None) -> dict:
     b = _resolve_borrower(req.borrower_id)
+    from app.services.model_registry import ArtifactError, load_fixture
+    try:
+        model_artifact = load_fixture(model_artifact_id, crop=str(b["crop"]), geography="synthetic_demo_only")
+    except ArtifactError as exc:
+        model_artifact = {"status": "rejected_fallback", "artifact_id": model_artifact_id,
+                          "sha256": None, "artifact": None, "reason": str(exc)}
     # New demo applications can be assessed against their requested principal
     # without mutating the borrower's existing synthetic profile.
     if req.loan_principal_override_inr is not None:
@@ -839,15 +851,15 @@ def evaluate_scenario(req: ScenarioRequest) -> dict:
     from app.db import get_loan_record
     posted = (get_loan_record(req.borrower_id) or {}).get("posted_events", [])
     b["posted_loan_events"] = [event for event in posted if date.fromisoformat(event["date"]) <= req.as_of]
-    baseline = _assessment(b, req, shock=False)
-    stress = _assessment(b, req, shock=True)
+    baseline = _assessment(b, req, shock=False, model_artifact=model_artifact)
+    stress = _assessment(b, req, shock=True, model_artifact=model_artifact)
     # Persist the actual calendar stage as the canonical request value when a
     # date was supplied, so UI controls, snapshots, and driver text agree.
     req.overrides.heatwave_growth_stage = stress["heat_event"]["stage"]
     eligible = req.as_of < b["due_at"]
     candidate_id = req.action_parameters.get("candidate_id")
     selected_action = candidate_id or req.action_id
-    action = _assessment(b, req, shock=True, action=selected_action) if selected_action != "none" and eligible else None
+    action = _assessment(b, req, shock=True, action=selected_action, model_artifact=model_artifact) if selected_action != "none" and eligible else None
     baseline["debt_cycle"] = _three_seasons(b, baseline, req, bridge_enabled=False)
     stress_no_bridge_cycle = _three_seasons(b, stress, req, bridge_enabled=False)
     stress["debt_cycle"] = _three_seasons(b, stress, req, bridge_enabled=True)
@@ -862,7 +874,9 @@ def evaluate_scenario(req: ScenarioRequest) -> dict:
     source_versions = {"demo_fixture": SOURCE_VERSION, "engine": ENGINE_VERSION,
                        "crop_calendar": CALENDAR_VERSION, "yield_rule": "stage-response-v3",
                        "weather_fixture": "ERA5-2015-retained-full-archive", "warnings": WARNING_CONFIG["version"],
-                       "weather_snapshot_hash": climate_snapshot_hash, "climate_path_hash": climate_path_hash}
+                       "weather_snapshot_hash": climate_snapshot_hash, "climate_path_hash": climate_path_hash,
+                       "yield_artifact_id": model_artifact.get("artifact_id") or "fallback",
+                       "yield_artifact_sha256": model_artifact.get("sha256") or "unavailable"}
     frozen = {"borrower": _jsonable(b), "as_of": req.as_of.isoformat(), "timezone": "Asia/Kolkata",
               "seed": DEMO_SEED, "climate_paths": {"count": len(path_definition), "hash": climate_path_hash},
               "sources": source_versions}
@@ -888,6 +902,7 @@ def evaluate_scenario(req: ScenarioRequest) -> dict:
     return _jsonable({"borrower_id": req.borrower_id, "scenario_id": input_hash[:20], "input_hash": input_hash,
         "comparison_context_hash": context_hash, "engine_version": ENGINE_VERSION, "assessment_as_of": req.as_of,
         "source_versions": source_versions, "source_snapshot_ids": [SOURCE_VERSION], "frozen_context": frozen,
+        "model_artifact": {key: value for key, value in model_artifact.items() if key != "artifact"},
         "scenario_request": req.model_dump(mode="json"),
         "claim_scope": "synthetic_lending_scenario_conditional", "baseline": baseline, "stress": stress,
         "stress_with_action": action, "action_status": "not_selected" if selected_action == "none" else "simulated_proposal" if eligible else "ineligible",

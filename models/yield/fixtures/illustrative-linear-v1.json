@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "artifact_id": "illustrative-linear-v1",
+  "artifact_type": "yield_linear_fixture",
+  "model_version": "1.0.0",
+  "status": "fixture_only",
+  "operational_admission": false,
+  "training_cutoff": null,
+  "data_hashes": [],
+  "evaluation_metadata": {"status": "illustrative_fixture", "held_out_rows": 0},
+  "runtime": {"format": "JSON", "dependencies": []},
+  "feature_schema": [
+    {"name": "baseline_yield_t_per_ha", "type": "number", "unit": "t/ha"},
+    {"name": "combined_loss_fraction", "type": "number", "unit": "fraction"},
+    {"name": "baseline_yield_times_loss", "type": "number", "unit": "t/ha"}
+  ],
+  "coverage": {"crops": ["wheat", "maize"], "geography": "synthetic_demo_only"},
+  "intercept": 0,
+  "coefficients": [1, 0, -1],
+  "inference_example": {"features": [2, 0.2, 0.4], "expected_yield_t_per_ha": 1.6}
+}

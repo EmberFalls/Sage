@@ -19,11 +19,12 @@ from app.db import (add_audit_event, append_loan_event, create_application, get_
                    list_allocation_snapshots, get_allocation_snapshot, save_allocation_snapshot,
                    list_source_refresh_events, list_source_snapshots, list_warning_evidence, save_borrower_record,
                    save_comparison_bundle, save_scenario, seed_demo_records, transition_intervention_proposal, update_application,
-                   update_application_with_demo_loan)
+                   update_application_with_demo_loan, save_source_admission_decision,
+                   list_source_admission_decisions)
 from app.schemas import (ApplicationCreate, ApplicationStatusUpdate, BorrowerCreate, LedgerEventCreate,
                          FeatureSnapshotImport, InterventionEvaluationRequest, InterventionProposalCreate,
                          InterventionReviewUpdate, ScenarioBundle, ScenarioRequest, AllocationRequest,
-                         WarningWorkflowUpdate)
+                         WarningWorkflowUpdate, SourceAdmissionDecisionCreate, SatelliteTelemetryRequest)
 from app.services.assessment import BORROWERS, SOURCE_VERSION, STAGE_WINDOWS, evaluate_scenario
 from app.services.interventions import POLICY as INTERVENTION_POLICY, action_catalog, evaluate_action_candidates, score_action_option
 from app.services.allocation import (apply_allocated_candidate, freeze_from_saved_comparisons,
@@ -59,7 +60,7 @@ async def hosted_route_gate(request: Request, call_next):
     # Legacy portfolio routes are intentionally demo-only until branch scope
     # filters and hosted identity provisioning are available on every query.
     path = request.url.path
-    if APP_MODE == "hosted" and path.startswith("/api/") and not path.startswith(("/api/auth/", "/api/private/", "/api/sources", "/api/source-", "/api/data-sources")):
+    if APP_MODE == "hosted" and path.startswith("/api/") and not path.startswith(("/api/auth/", "/api/private/", "/api/sources", "/api/source-", "/api/data-sources", "/api/telemetry/")):
         return JSONResponse({"detail": "Not found"}, status_code=404)
     return await call_next(request)
 
@@ -312,9 +313,9 @@ def crop_calendar(borrower_id: str = Query(default="B-DEMO-001")):
 @app.post("/api/assessments/evaluate", response_model=ScenarioBundle)
 @app.post("/api/debt-cycle/evaluate", response_model=ScenarioBundle)
 @app.post("/api/scenarios/evaluate", response_model=ScenarioBundle)
-def scenario(req: ScenarioRequest):
+def scenario(req: ScenarioRequest, yield_artifact_id: str | None = Query(default=None, max_length=100)):
     try:
-        result = evaluate_scenario(req)
+        result = evaluate_scenario(req, model_artifact_id=yield_artifact_id)
         result["snapshot_freshness"] = "current"
         result["snapshot_stale_reasons"] = []
         return save_scenario(result["scenario_id"], req.borrower_id, result["input_hash"], req.model_dump(mode="json"), result)
@@ -629,6 +630,46 @@ def data_sources(current_user: dict | None = Depends(source_administration_acces
     return list_data_sources()
 
 
+@app.get("/api/data-sources/model-status")
+def model_status(current_user: dict | None = Depends(source_administration_access)):
+    from app.services.model_registry import ARTIFACTS, FIXTURE, load_fixture, ArtifactError
+    try:
+        fixture = load_fixture("illustrative-linear-v1")
+        fixture_state = {"status": fixture["status"], "artifact_id": fixture["artifact_id"], "sha256": fixture["sha256"]}
+    except ArtifactError as exc:
+        fixture_state = {"status": "rejected_fallback", "reason": str(exc)}
+    return {"empirical_status": "DEFERRED/BLOCKED_REAL_DATA", "training": "offline_only",
+            "assessment_click_triggers_training": False, "supported_artifacts": [fixture_state],
+            "registry": [{"artifact_id": artifact_id, **{key: value for key, value in metadata.items() if key != "path"}}
+                         for artifact_id, metadata in ARTIFACTS.items()],
+            "research_artifacts": "not operationally admitted", "path": str(FIXTURE.relative_to(FIXTURE.parents[3]))}
+
+
+@app.get("/api/data-sources/{source_id}/admission-decisions")
+def source_admission_history(source_id: str, current_user: dict = Depends(require_roles("admin"))):
+    return {"decisions": list_source_admission_decisions(source_id)}
+
+
+@app.post("/api/data-sources/{source_id}/admission-decisions", status_code=201)
+def decide_source_admission(source_id: str, payload: SourceAdmissionDecisionCreate,
+                            current_user: dict = Depends(require_roles("admin"))):
+    snapshot = get_source_snapshot(payload.snapshot_id) if payload.snapshot_id else None
+    if payload.snapshot_id and (not snapshot or snapshot.get("source_id") != source_id):
+        raise HTTPException(404, "Source snapshot not found")
+    if payload.status == "admitted" and not snapshot:
+        raise HTTPException(422, "Admission requires a frozen source snapshot")
+    record = {"decision_id": f"SAD-{uuid4().hex}", "source_id": source_id,
+              "snapshot_id": payload.snapshot_id, "status": payload.status, "reason": payload.reason,
+              "evidence": payload.evidence, "reviewer_id": current_user["id"],
+              "created_at": datetime.now(timezone.utc).isoformat()}
+    save_source_admission_decision(record)
+    # Admission records evidence only; no source is automatically wired into scoring.
+    add_audit_event(actor_id=current_user["id"], actor_role=current_user["role"], entity_type="data_source",
+                    entity_id=source_id, action=f"admission_{payload.status}", reason=payload.reason,
+                    result_ref=record["decision_id"])
+    return record
+
+
 @app.post("/api/data-sources/open-meteo/refresh")
 def refresh_open_meteo(current_user: dict = Depends(require_roles("admin"))):
     try:
@@ -654,12 +695,30 @@ def import_feature_snapshot(payload: FeatureSnapshotImport, current_user: dict =
 
 
 @app.get("/api/telemetry/soil-moisture")
-def soil_moisture_telemetry(district: str = "Nashik", as_of: str = "2026-10-09"):
-    """Fetch high-resolution volumetric soil water and root-zone metrics."""
-    return get_soil_moisture_telemetry(district, as_of)
+def soil_moisture_telemetry(district: str = "Nashik",
+                            current_user: dict | None = Depends(get_optional_current_user)):
+    """Fetch modeled point-grid soil water; not a field sensor reading."""
+    if APP_MODE == "hosted" and not current_user:
+        raise HTTPException(401, "Authentication required", headers={"WWW-Authenticate": "Bearer"})
+    result = get_soil_moisture_telemetry(district)
+    if current_user:
+        add_audit_event(actor_id=current_user["id"], actor_role=current_user["role"], entity_type="telemetry",
+                        entity_id="open-meteo-soil", action="read_soil_model_telemetry",
+                        reason="Authenticated user requested point-grid soil model output", result_ref=None)
+    return result
 
 
-@app.get("/api/telemetry/ndvi")
-def satellite_ndvi_telemetry(district: str = "Nashik", crop: str = "Wheat", stage: str = "flowering", as_of: str = "2026-10-09"):
-    """Fetch Sentinel-2 L2A optical NDVI vegetation index and phenology curve."""
-    return get_satellite_ndvi_telemetry(district, crop, stage, as_of)
+@app.post("/api/telemetry/ndvi")
+def satellite_ndvi_telemetry(payload: SatelliteTelemetryRequest,
+                            current_user: dict | None = Depends(get_optional_current_user)):
+    """Fetch Sentinel-2 L2A NDVI stats for a small supplied plot-area bbox."""
+    if APP_MODE == "hosted" and not current_user:
+        raise HTTPException(401, "Authentication required", headers={"WWW-Authenticate": "Bearer"})
+    result = get_satellite_ndvi_telemetry([float(x) for x in payload.bbox], payload.start_date.isoformat(),
+                                          payload.end_date.isoformat(), payload.max_scene_cloud_pct)
+    if current_user:
+        add_audit_event(actor_id=current_user["id"], actor_role=current_user["role"], entity_type="telemetry",
+                        entity_id="sentinel-2-ndvi", action="read_satellite_telemetry",
+                        reason="Authenticated user requested area-level satellite statistics",
+                        result_ref=None)
+    return result

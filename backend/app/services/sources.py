@@ -10,7 +10,7 @@ from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 from uuid import uuid4
 
-from app.db import (list_source_refresh_events, list_source_snapshots, save_source_refresh_event,
+from app.db import (list_source_refresh_events, list_source_snapshots, list_source_admission_decisions, save_source_refresh_event,
                     save_source_snapshot)
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -185,9 +185,19 @@ def list_data_sources() -> dict:
     for record in snapshots:
         latest.setdefault(record["source_id"], record)
     events = list_source_refresh_events()
+    decisions = list_source_admission_decisions()
     last_refresh = {}
+    last_success = {}
+    latest_failure = {}
     for event in events:
         last_refresh.setdefault(event["source_id"], event)
+        if event.get("status") == "success":
+            last_success.setdefault(event["source_id"], event)
+        if event.get("error_code"):
+            latest_failure.setdefault(event["source_id"], event)
+    latest_decision = {}
+    for decision in decisions:
+        latest_decision.setdefault((decision["source_id"], decision.get("snapshot_id")), decision)
     imported = lambda source_id, fallback: {
         "status": latest[source_id]["quality_status"] if source_id in latest else fallback,
         "latest_snapshot": latest.get(source_id),
@@ -217,13 +227,22 @@ def list_data_sources() -> dict:
                       "complete_archive_available" if latest[SOURCE_ID].get("coverage_complete") and
                       latest[SOURCE_ID].get("retrieval_mode") == "live_archive_response" else
                       "cached_complete_archive" if latest[SOURCE_ID].get("coverage_complete") else "partial_archive")
-    return {
-        "sources": [
+    weather_success = last_success.get(SOURCE_ID)
+    if weather_success:
+        age_days = (datetime.now(timezone.utc) - datetime.fromisoformat(weather_success["attempted_at"])).total_seconds() / 86400
+        freshness_status = "fresh" if age_days <= 30 else "stale"
+    else:
+        freshness_status = "unknown_no_successful_live_refresh"
+    sources = [
             {"source_id": SOURCE_ID, "name": "Open-Meteo Historical Weather API",
              "status": weather_status, "version": MODEL, "url": ARCHIVE_URL, "attribution": "Open-Meteo.com",
              "license": "CC-BY-4.0; free API non-commercial terms apply", "spatial_resolution": "returned grid cell",
              "temporal_resolution": "daily", "units": {"precipitation_sum": "mm", "temperature_2m_max": "°C", "temperature_2m_min": "°C"},
              "latest_snapshot": latest.get(SOURCE_ID), "last_refresh": last_refresh.get(SOURCE_ID),
+             "last_successful_refresh": last_success.get(SOURCE_ID), "latest_failed_attempt": latest_failure.get(SOURCE_ID),
+             "freshness_policy": {"basis": "time since last successful live validation of the historical archive",
+                                  "max_age_days": 30, "status": freshness_status,
+                                  "cache_mode": latest.get(SOURCE_ID, {}).get("retrieval_mode", "not_fetched")},
              "runtime_assessment_use": "conditional_stage_features_only_when_date_and_Pune_geography_overlap",
              "note": "The retained ERA5 fixture contributes dated per-stage summaries only for matching Pune crop windows and is clipped at assessment as-of; it is not a farm observation or yield model predictor."},
             {"source_id": "cybench", "name": "CY-Bench", **imported("cybench", "archive_not_inspected"),
@@ -238,17 +257,31 @@ def list_data_sources() -> dict:
             {"source_id": "agmarknet", "name": "AGMARKNET", **imported("agmarknet", "endpoint_and_rows_unverified"),
              "url": "https://data.gov.in/catalog/current-daily-price-various-commodities-various-markets-mandi",
              "runtime_assessment_use": False},
-            {"source_id": "satellite", "name": "Satellite / NDVI", **imported("satellite", "unavailable"),
-             "runtime_assessment_use": False, "note": "Copernicus Sentinel data are open; no farm boundary or validated Pune pixel series is admitted."},
-            {"source_id": "soil", "name": "Soil moisture", **imported("soil", "unavailable"),
-             "runtime_assessment_use": False},
+            {"source_id": "satellite", "name": "Satellite / NDVI", **imported("satellite", "integration_ready"),
+             "url": "https://documentation.dataspace.copernicus.eu/APIs/SentinelHub/Statistical.html",
+             "integration_status": "CDSE credentials required for per-plot statistics; caller supplies a bounded plot box and date window",
+             "runtime_assessment_use": False, "note": "Sentinel-2 L2A scene discovery and clear-pixel NDVI statistics are available on request; no boundary is retained and results do not feed scoring."},
+            {"source_id": "soil", "name": "Soil moisture", **imported("soil", "integration_ready_on_request"),
+             "url": "https://open-meteo.com/en/docs/ecmwf-api",
+             "integration_status": "Open-Meteo ECMWF point-grid model output is fetched on request for configured district reference points",
+             "runtime_assessment_use": False, "note": "Model grid values are not field sensor observations and are not admitted to assessment scoring."},
             {"source_id": "crop_calendar", "name": "Crop calendar", **imported("crop_calendar", "unavailable"),
              "url": "https://zenodo.org/records/7875105", "version": "WorldCereal primary-season calendar",
              "runtime_assessment_use": False,
              "note": "No Pune maize calendar raster or administrative extraction is admitted; static calendar rows require source, grid/boundary metadata, and no implied year."},
             {"source_id": "crop-yield-price-join", "name": "Pune maize season join", "status": join_status,
              "note": join_detail, "runtime_assessment_use": False},
-        ],
+        ]
+    for source in sources:
+        snapshot_id = source.get("latest_snapshot", {}).get("snapshot_id") if source.get("latest_snapshot") else None
+        decision = latest_decision.get((source["source_id"], snapshot_id)) or latest_decision.get((source["source_id"], None))
+        source["admission_decision"] = decision or {"status": "candidate", "reason": "No reviewed admission decision recorded."}
+        if source["source_id"] != SOURCE_ID:
+            source["last_successful_refresh"] = last_success.get(source["source_id"])
+            source["latest_failed_attempt"] = latest_failure.get(source["source_id"])
+            source["freshness_policy"] = {"basis": "No active refresh policy; status reflects retained evidence only.", "max_age_days": None}
+    return {
+        "sources": sources,
         "snapshots": snapshots,
         "recent_refreshes": events[:20],
         "claim_limit": "A weather grid-cell snapshot is not evidence of farm conditions or a matched crop-yield-credit dataset.",
