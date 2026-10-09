@@ -1,7 +1,7 @@
 # F0 — frozen FIN-03 scope and evidence gate
 
 **Freeze date:** 2026-10-09  
-**Source of requirements:** `PhenoCredit_FULL_Implementation_Plan_V2.md`, Phase F0. This file applies that plan's instructions to the existing Sage repository; it is not permission to treat roadmap prose as implemented behavior.
+**Source of requirements:** `Sage_FULL_Implementation_Plan_V2.md`, Phase F0. This file applies that plan's instructions to the existing Sage repository; it is not permission to treat roadmap prose as implemented behavior.
 
 ## Scope decision
 

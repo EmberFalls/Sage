@@ -43,9 +43,9 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [token, setToken] = useState<string | null>(() => localStorage.getItem('phenocredit_token'))
+  const [token, setToken] = useState<string | null>(() => localStorage.getItem('sage_token'))
   const [user, setUser] = useState<User | null>(() => {
-    const saved = localStorage.getItem('phenocredit_user')
+    const saved = localStorage.getItem('sage_user')
     if (saved) {
       try {
         return JSON.parse(saved)
@@ -60,15 +60,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const saveAuth = (newToken: string, newUser: User) => {
     setToken(newToken)
     setUser(newUser)
-    localStorage.setItem('phenocredit_token', newToken)
-    localStorage.setItem('phenocredit_user', JSON.stringify(newUser))
+    localStorage.setItem('sage_token', newToken)
+    localStorage.setItem('sage_user', JSON.stringify(newUser))
   }
 
   const logout = () => {
     setToken(null)
     setUser(null)
-    localStorage.removeItem('phenocredit_token')
-    localStorage.removeItem('phenocredit_user')
+    localStorage.removeItem('sage_token')
+    localStorage.removeItem('sage_user')
   }
 
   // Validate token on mount
@@ -86,7 +86,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       })
       .then((me: User) => {
         setUser(me)
-        localStorage.setItem('phenocredit_user', JSON.stringify(me))
+        localStorage.setItem('sage_user', JSON.stringify(me))
       })
       .catch(() => {
         logout()

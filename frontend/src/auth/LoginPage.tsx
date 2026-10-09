@@ -148,12 +148,12 @@ export function LoginPage({ onSuccess, onBack }: LoginPageProps) {
             onClick={onBack}
             role="button"
             tabIndex={0}
-            title="PhenoCredit Home"
+            title="Sage Home"
           >
             <div className="hero-brand-icon">
               <Layers size={18} strokeWidth={2.4} />
             </div>
-            <span className="hero-brand-name">PhenoCredit</span>
+            <span className="hero-brand-name">Sage</span>
           </div>
 
           <div className="hero-nav-divider" />
@@ -187,7 +187,7 @@ export function LoginPage({ onSuccess, onBack }: LoginPageProps) {
               <span className="pulse-dot" />
               <span>AUTHENTICATION PORTAL</span>
             </div>
-            <h1 className="auth-main-title">Access PhenoCredit</h1>
+            <h1 className="auth-main-title">Access Sage</h1>
             <p className="auth-main-subtitle">
               Climate-aware agricultural credit risk intelligence & portfolio workspace.
             </p>
