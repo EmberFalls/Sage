@@ -1,5 +1,5 @@
 /* =========================================================================
-   PhenoCredit — SaaS Landing Page Stylesheet
+   Sage — SaaS Landing Page Stylesheet
    Institutional Fintech Design System: Tokens, Bento Grids, Tabs & Micro-Interactions
    ========================================================================= */
 
@@ -29,6 +29,7 @@
   background-color: var(--landing-bg);
   color: var(--landing-text-main);
   font-family: var(--hero-font-body);
+  font-weight: 500;
   overflow-x: hidden;
 }
 
@@ -88,7 +89,7 @@
 .landing-heading-subtitle {
   font-family: var(--hero-font-body);
   font-size: clamp(14px, 1.1vw, 16.5px);
-  font-weight: 400;
+  font-weight: 500;
   line-height: 1.6;
   color: var(--landing-text-muted);
   max-width: 680px;

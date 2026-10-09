@@ -1,6 +1,6 @@
 # Architecture and project summary
 
-PhenoCredit is a local-first demonstration of agricultural credit scenario analysis. A lender can select a synthetic borrower, vary disclosed climate and market assumptions, and compare the resulting dated cash ledger, bank payment and modeled debt obligations. Every proposal remains hypothetical and every borrower record is synthetic.
+Sage is a local-first demonstration of agricultural credit scenario analysis. A lender can select a synthetic borrower, vary disclosed climate and market assumptions, and compare the resulting dated cash ledger, bank payment and modeled debt obligations. Every proposal remains hypothetical and every borrower record is synthetic.
 
 The React and TypeScript interface sends assessment requests to one FastAPI service. Its Pydantic request/response contract feeds one Python assessment engine, which combines illustrative crop-stage stress with a Decimal-based dated cash ledger and a three-season debt simulation. SQLite stores seeded borrower and loan fixtures plus immutable assessment snapshots. The interface reads those snapshots and API results; financial formulas remain on the server. No network source service is required for the demo.
 
@@ -19,7 +19,7 @@ flowchart LR
 
 ## Runtime boundary
 
-The launch scripts start only loopback API and Vite servers. The API seeds two deterministic synthetic profiles on startup. `scripts/Reset-PhenoCreditDemo.ps1` repeats that idempotent seed. Assessment snapshots persist in the local SQLite file; reset does not erase those report records. The demo makes no real credit decision, bank update, weather request or market data request.
+The launch scripts start only loopback API and Vite servers. The API seeds two deterministic synthetic profiles on startup. `scripts/Reset-SageDemo.ps1` repeats that idempotent seed. Assessment snapshots persist in the local SQLite file; reset does not erase those report records. The demo makes no real credit decision, bank update, weather request or market data request.
 
 ## Current limitations
 

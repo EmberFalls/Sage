@@ -271,6 +271,10 @@ def derive_financial_bridge(b: dict, baseline: dict, stress: dict) -> dict:
 
 def evaluate_scenario(req: ScenarioRequest) -> dict:
     b = _resolve_borrower(req.borrower_id)
+    # New demo applications can be assessed against their requested principal
+    # without mutating the borrower's existing synthetic profile.
+    if req.loan_principal_override_inr is not None:
+        b["loan_principal_inr"] = D(str(req.loan_principal_override_inr))
     baseline = _assessment(b, req, shock=False)
     stress = _assessment(b, req, shock=True)
     eligible = req.as_of < b["due_at"]

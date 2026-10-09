@@ -1,0 +1,71 @@
+.farmer-shell {
+  min-height: 100vh;
+  background: #f6f7f3;
+  color: #17241f;
+  font-family: var(--hero-font-body, 'Segoe UI', Arial, sans-serif);
+}
+
+.farmer-topbar {
+  min-height: 64px;
+  padding: 10px clamp(16px, 4vw, 56px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: #fff;
+  border-bottom: 1px solid #dae2dc;
+}
+
+.farmer-topbar .brand {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #17241f;
+}
+
+.farmer-topbar .brand strong { font-size: 17px; }
+.farmer-topbar .brand-mark { width: 34px; height: 34px; }
+
+.farmer-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 0 clamp(12px, 4vw, 56px);
+  overflow-x: auto;
+  background: #fff;
+  border-bottom: 1px solid #dae2dc;
+}
+
+.farmer-tabs button {
+  flex: 0 0 auto;
+  min-height: 46px;
+  padding: 0 14px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: #64736b;
+  font: inherit;
+  font-size: 13px;
+}
+
+.farmer-tabs button:hover,
+.farmer-tabs button.active {
+  color: #164d3b;
+  border-bottom-color: #164d3b;
+}
+
+.farmer-content {
+  width: min(100% - 32px, 1080px);
+  margin: 0 auto;
+  padding: 24px 0 48px;
+}
+
+.farmer-content > .notice { margin-bottom: 18px; }
+
+@media (max-width: 520px) {
+  .farmer-topbar { flex-wrap: wrap; }
+  .farmer-topbar > .tag { order: 3; width: 100%; }
+  .farmer-content { width: min(100% - 22px, 1080px); padding-top: 14px; }
+}

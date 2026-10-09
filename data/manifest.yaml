@@ -22,6 +22,14 @@ baseline:
     Keep the current seeded offline demo and its outputs reproducible. Any
     source/model/rule change must version the baseline and record the reason;
     never silently rewrite historical snapshots.
+runtime_upgrade:
+  change_record: data/baselines/f1-f4-2026-10-09.yaml
+  engine: risk-engine-v2-demo.3
+  crop_rules: illustrative-stage-response-v3
+  scoring_sources_added: false
+  note: >-
+    F1-F4 adds routes, demo operations, source snapshots, and date-aligned
+    illustrative stress. External snapshots are not assessment inputs.
 sources:
   - id: synthetic-demo-ledger
     type: synthetic
@@ -63,19 +71,69 @@ sources:
       measurement. Sample excerpt is not a complete season archive and is not
       wired into runtime assessments. Commercial use requires a suitable paid
       API plan. It is not a crop/yield/satellite/price join.
+  - id: open-meteo-pune-historical-era5-2015
+    type: historical_reanalysis
+    label: Open-Meteo ERA5 daily weather for Pune grid cell
+    status: complete_window_retained_schema_validated_not_assessment_input
+    verified_bytes: true
+    url: https://archive-api.open-meteo.com/v1/archive
+    docs_url: https://open-meteo.com/en/docs/historical-weather-api
+    request:
+      latitude: 18.5204
+      longitude: 73.8567
+      start_date: '2015-06-01'
+      end_date: '2015-10-31'
+      daily: [precipitation_sum, temperature_2m_max, temperature_2m_min]
+      timezone: Asia/Kolkata
+      model: era5
+      authentication: none
+    response_location:
+      latitude: 18.5
+      longitude: 73.75
+      elevation_m: 561
+      timezone: Asia/Kolkata
+    temporal_resolution: daily
+    row_count: 153
+    units: {precipitation_sum: mm, temperature_2m_max: '°C', temperature_2m_min: '°C'}
+    local_path: data/raw/open_meteo/pune_kharif_2015_era5.json
+    captured_at: '2026-10-09'
+    license: CC-BY-4.0 for data; free API restricted to non-commercial use
+    attribution: Open-Meteo.com
+    sha256: 5B1CBCFC830C3FBDD67C53A76AB7E220A88C23D56177DF10B7AED1C40E495F9E
+    limitations: >-
+      ERA5 reanalysis at about 25 km resolution; not a district average,
+      weather station, farm measurement, or forecast. ERA5-Land omits
+      precipitation, so ERA5 was pinned for this variable set. Not a matched
+      crop-yield/NDVI/price panel and not wired into assessment scoring.
   - id: cybench
     type: observed_research_candidate
     label: CY-Bench
-    status: public_metadata_reviewed_archive_uninspected
-    url: https://zenodo.org/records/13838912
-    version: '1.2'
-    license: unverified_record_and_archive_terms
+    status: current_metadata_reviewed_archive_uninspected
+    url: https://zenodo.org/records/17279151
+    version: '1.10'
+    license: pending_archive_and_component_source_review
     archive_downloaded: false
     sha256: null
     note: >-
-      Record version/archive sizes were reviewed, but the rendered record did
-      not expose a license value and India maize/Pune rows/geographic keys have
-      not been inspected in the archive. Not used until verified.
+      Current archive is about 6.2 GB. India maize/Pune rows, admin crosswalk,
+      yield unit and component-source terms have not been inspected. Optional
+      streaming subset loader is available but imports remain pending review.
+  - id: maharashtra-apy-pune-maize-2015-16
+    type: district_crop_yield_candidate
+    label: Maharashtra district APY 2015-16 — Pune Kharif maize
+    status: candidate_third_party_mirror_unverified
+    url: https://www.scribd.com/document/1004670718/DISTRICTWISE-APY-2015-16
+    sha256: null
+    reported_value: 852
+    unit: kg/ha
+    source_period: Kharif 2015-16
+    local_path: data/raw/agriculture/pune_maize_2015_16_candidate.json
+    verified_bytes: false
+    assessment_runtime_use: false
+    note: >-
+      Pune maize row is visible in the mirror's Kharif table, attributed to
+      Maharashtra Agriculture Department. Primary report bytes/checksum,
+      reuse terms, and district-to-weather-grid crosswalk remain unverified.
   - id: agmarknet
     type: public_market_candidate
     label: AGMARKNET

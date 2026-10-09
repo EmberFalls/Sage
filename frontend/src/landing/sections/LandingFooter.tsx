@@ -44,7 +44,7 @@ export function LandingFooter({ onNavigate }: LandingFooterProps) {
               <div className="footer-brand-icon">
                 <Layers size={18} strokeWidth={2.4} />
               </div>
-              <span className="footer-brand-name">PhenoCredit</span>
+              <span className="footer-brand-name">Sage</span>
             </div>
             <p className="footer-brand-desc">
               A climate-aware agricultural credit risk assessment & lending intelligence platform linking in-season weather shocks to dated borrower cash flows.
@@ -86,10 +86,10 @@ export function LandingFooter({ onNavigate }: LandingFooterProps) {
         {/* Bottom Bar with Regulatory Disclaimer */}
         <div className="footer-bottom-bar">
           <p className="footer-disclaimer-text">
-            <b>Disclaimer:</b> PhenoCredit is an agricultural credit-risk decision-support prototype (PS 3). Output metrics, repayment feasibility scores, and shortfall estimates are simulation outputs derived from synthetic loan portfolios and assumed meteorological parameters. They do not constitute binding credit approvals, formal banking advice, or crop performance guarantees.
+            <b>Disclaimer:</b> Sage is an agricultural credit-risk decision-support prototype (PS 3). Output metrics, repayment feasibility scores, and shortfall estimates are simulation outputs derived from synthetic loan portfolios and assumed meteorological parameters. They do not constitute binding credit approvals, formal banking advice, or crop performance guarantees.
           </p>
           <div className="footer-meta-row">
-            <span>© 2026 PhenoCredit Platform · All Rights Reserved</span>
+            <span>© 2026 Sage Platform · All Rights Reserved</span>
             <span>FIN-03 Architecture</span>
           </div>
         </div>

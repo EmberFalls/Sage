@@ -14,4 +14,4 @@ foreach ($entry in $owned) {
     if ($expected) { Stop-Process -Id $entry.Id -Force -ErrorAction SilentlyContinue }
 }
 Remove-Item -LiteralPath $pidFile -Force
-Write-Host 'Stopped PhenoCredit processes started by the launcher.'
+Write-Host 'Stopped Sage processes started by the launcher.'

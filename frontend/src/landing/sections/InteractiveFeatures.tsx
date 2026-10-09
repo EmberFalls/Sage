@@ -29,7 +29,7 @@ export function InteractiveFeatures({ onNavigate }: InteractiveFeaturesProps) {
         <SectionHeading
           tag="WORKFLOW ARCHITECTURE"
           title="From weather anomaly to dated debt solvency"
-          subtitle="Explore how PhenoCredit joins physiological crop sensitivity, bank repayment schedules, and carried debt across every stage of the lending lifecycle."
+          subtitle="Explore how Sage joins physiological crop sensitivity, bank repayment schedules, and carried debt across every stage of the lending lifecycle."
           badge={<DemoDataBadge type="synthetic" text="Interactive Preview" />}
         />
 
@@ -85,7 +85,7 @@ export function InteractiveFeatures({ onNavigate }: InteractiveFeaturesProps) {
                 <span className="tab-eyebrow">MODULE 01 · PHENOLOGY MODELING</span>
                 <h3 className="tab-title">Stage-Specific Sensitivity Calibration</h3>
                 <p className="tab-desc">
-                  PhenoCredit models crop growth in 5 distinct phenological windows (Planting, Vegetative, Flowering, Grain Fill, Harvest). High heat during flowering carries a 1.0× peak sensitivity multiplier compared to 0.25× during harvest.
+                  Sage models crop growth in 5 distinct phenological windows (Planting, Vegetative, Flowering, Grain Fill, Harvest). High heat during flowering carries a 1.0× peak sensitivity multiplier compared to 0.25× during harvest.
                 </p>
                 <div className="tab-feature-bullets">
                   <div className="bullet-item">
@@ -168,7 +168,7 @@ export function InteractiveFeatures({ onNavigate }: InteractiveFeaturesProps) {
                 <span className="tab-eyebrow">MODULE 02 · DATED REPAYMENT LEDGER</span>
                 <h3 className="tab-title">Dated Cash Available Before Contractual Due Date</h3>
                 <p className="tab-desc">
-                  A crop sale occurring on November 10th cannot settle an obligation due on November 5th. PhenoCredit creates a strict chronological cash-flow ledger that flags date-driven liquidity gaps before delinquency occurs.
+                  A crop sale occurring on November 10th cannot settle an obligation due on November 5th. Sage creates a strict chronological cash-flow ledger that flags date-driven liquidity gaps before delinquency occurs.
                 </p>
                 <div className="tab-feature-bullets">
                   <div className="bullet-item">
@@ -234,7 +234,7 @@ export function InteractiveFeatures({ onNavigate }: InteractiveFeaturesProps) {
                 <span className="tab-eyebrow">MODULE 03 · CARRIED LIABILITIES</span>
                 <h3 className="tab-title">Preventing the Multi-Season Informal Debt Trap</h3>
                 <p className="tab-desc">
-                  When a farmer borrows from informal lenders to pay a bank due, the debt does not disappear. PhenoCredit models interest-accruing carried balances across 3 consecutive crop seasons.
+                  When a farmer borrows from informal lenders to pay a bank due, the debt does not disappear. Sage models interest-accruing carried balances across 3 consecutive crop seasons.
                 </p>
                 <div className="tab-feature-bullets">
                   <div className="bullet-item">

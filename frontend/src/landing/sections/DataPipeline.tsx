@@ -82,7 +82,7 @@ export function DataPipeline() {
         <SectionHeading
           tag="DATA GOVERNANCE & PROVENANCE"
           title="Transparent FIN-03 Input-to-Decision Architecture"
-          subtitle="Every output is explicitly linked to its underlying source status. PhenoCredit clearly distinguishes verified telemetry, assumed parameters, and synthetic records."
+          subtitle="Every output is explicitly linked to its underlying source status. Sage clearly distinguishes verified telemetry, assumed parameters, and synthetic records."
           badge={<DemoDataBadge type="verified" text="Transparent Provenance Model" />}
         />
 

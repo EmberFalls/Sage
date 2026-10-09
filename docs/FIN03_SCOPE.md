@@ -5,7 +5,7 @@
 
 ## Scope decision
 
-Pilot source-feasibility target: **maize, Pune district, Maharashtra, Kharif 2015**. Choose one crop-region-season before feature development so source joins have a stable key. Pune + maize is already represented in the synthetic demo, but the demo dates and numbers are not observations from this selected 2015 season. The real weather excerpt is a grid point, not district or farm truth.
+Pilot source-feasibility target: **maize, Pune district, Maharashtra, Kharif 2015**. Choose one crop-region-season before feature development so source joins have a stable key. Pune + maize is already represented in the synthetic demo, but the demo dates and numbers are not observations from this selected 2015 season. The retained ERA5 weather archive is a grid point, not district or farm truth.
 
 **F0 exit state: PARTIAL — documentation/baseline deliverables frozen; real-data join gate not met.** A no-auth Open-Meteo historical request and three raw daily sample rows are recorded. No matched real yield + weather + NDVI + price season has been demonstrated, so F3+ must preserve simulation/assumption labels and cannot start real-data model claims. Do not mark F0 fully complete.
 
@@ -49,7 +49,7 @@ These are gates, not claims that the source corpus already meets them.
 
 ## Registered assumptions and limitations
 
-1. The only retained external sample is a three-day Open-Meteo historical reanalysis excerpt. It is not a forecast, station measurement, field measurement, source adapter, complete season archive or matched crop outcome.
+1. The retained external weather archive contains 153 Open-Meteo ERA5 daily reanalysis rows for 2015-06-01 through 2015-10-31. It is not a forecast, station measurement, field measurement, district aggregate, farm measurement or matched crop outcome.
 2. `Pune maize Kharif 2015` is a source feasibility target. No yield, NDVI, soil observation, price, or real credit-performance rows are verified for it.
 3. Existing borrower/loan/repayment values and the 21 simulation paths are synthetic. Crop response, calendar, rainfall/heat effects, irrigation and prices are assumptions/illustrations.
 4. A farmer record's district does not certify exact coordinates or establish that the weather grid is the farm's exposure.
@@ -59,8 +59,10 @@ These are gates, not claims that the source corpus already meets them.
 
 ## F0 source gate evidence
 
-- Successful no-auth historical API response observed for `archive-api.open-meteo.com`, query coordinates near Pune and date span 2015-06-01 through 2015-10-31. Three raw rows are retained in `data/raw/open_meteo/pune_kharif_2015_sample.json`; the complete response was not persisted and no checksum is claimed for it.
-- Response grid metadata: latitude 18.523726, longitude 73.86876, elevation 561m, timezone Asia/Kolkata. First three dates/values are documented in the retained excerpt.
+- Successful no-auth historical API response retained at `data/raw/open_meteo/pune_kharif_2015_era5.json` for requested coordinates 18.5204, 73.8567 and dates 2015-06-01 through 2015-10-31. SHA-256: `5B1CBCFC830C3FBDD67C53A76AB7E220A88C23D56177DF10B7AED1C40E495F9E`. Model ERA5 is pinned because ERA5-Land omits precipitation.
+- Response grid metadata: latitude 18.5, longitude 73.75, elevation 561m, timezone Asia/Kolkata. It has 153 non-null daily values for precipitation, maximum and minimum temperature. This grid is near Pune, not a district average or farm observation.
 - Official API documentation describes historical data as reanalysis and documents its temporal/spatial datasets; terms state free access is non-commercial and data is CC-BY 4.0. See source links in `DATA_SOURCES.md`.
 - CY-Bench record metadata/version was reviewed; its multi-GB archive was not downloaded/inspected for India maize/Pune keys. It is not admitted as evidence.
-- **Join result:** weather sample only. No actual known crop-yield/weather/NDVI/price geo-time join; F0 data gate remains open.
+- A NABARD Pune district report was reviewed as an annual 2015-16 maize candidate (`data/raw/agriculture/pune_maize_2015_16_candidate.json`): its annual yield is derivable from reported area and production, but it is not Kharif-specific, reuse terms are unverified, and no boundary-to-grid crosswalk is supplied. It is not admitted or used by the runtime. The review PDF is a local copy and is not committed.
+- A season-specific Kharif maize yield row is visible in a third-party mirror of a report attributed to Maharashtra Agriculture Department: Pune area 32 (00 ha), production 27 (00 tonnes), yield 852 kg/ha. The primary district-report bytes and checksum could not be located; the mirror shows an All Rights Reserved notice. The value is transcribed as a candidate only in the same JSON; it is not admitted pending primary-source and terms verification. District-to-grid alignment is also unresolved.
+- **Join result:** complete weather archive only. No admitted source-backed Pune maize yield row or matched yield/weather/NDVI/price geo-time join; F0 data gate remains open.

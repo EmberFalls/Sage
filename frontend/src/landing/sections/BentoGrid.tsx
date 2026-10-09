@@ -14,7 +14,7 @@ export function BentoGrid({ onNavigate }: BentoGridProps) {
         <SectionHeading
           tag="THE LENDING GAP"
           title="Why traditional credit scoring fails in agrarian portfolios"
-          subtitle="Conventional underwriting checks historical debt records. PhenoCredit links in-season climate shocks directly to dated cash flow and contractual bank due dates."
+          subtitle="Conventional underwriting checks historical debt records. Sage links in-season climate shocks directly to dated cash flow and contractual bank due dates."
           badge={<DemoDataBadge type="assumed" text="Scenario Evidence Model" />}
         />
 
@@ -40,7 +40,7 @@ export function BentoGrid({ onNavigate }: BentoGridProps) {
                 <ArrowRight size={16} />
               </div>
               <div className="bento-comp-item highlight">
-                <span className="bento-comp-tag lime">PhenoCredit View</span>
+                <span className="bento-comp-tag lime">Sage View</span>
                 <strong>High Stress @ Flowering</strong>
                 <small>Yield -38% · ₹42,000 cash shortfall projected</small>
               </div>
