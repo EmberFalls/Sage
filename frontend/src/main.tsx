@@ -6,6 +6,7 @@ import './styles.css'
 import './hero.css'
 import './landing/styles/landing.css'
 import './auth/auth.css'
+import './farmer.css'
 
 createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

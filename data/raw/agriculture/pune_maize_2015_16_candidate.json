@@ -1,0 +1,66 @@
+{
+  "record_id": "nabard-pune-maize-2015-16-annual-candidate",
+  "admission_status": "candidate_not_admitted",
+  "season_specific_candidate_from_unverified_mirror": {
+    "candidate_source": {
+      "publisher_attributed_by_document": "Government of Maharashtra, Agriculture Department",
+      "document_title": "Final Estimates of Area, Production & Productivity of Principal Crops During 2015-16 in Maharashtra",
+      "primary_source_lookup": "The official Agriculture Department document list exposes other district APY years but the 2015-16 district report was not located there during this review.",
+      "mirror_url": "https://www.scribd.com/document/1004670718/DISTRICTWISE-APY-2015-16",
+      "mirror_license": "All Rights Reserved notice on mirror; no reuse permission established",
+      "mirror_sha256": null,
+      "status": "transcribed_candidate_pending_primary_copy_and_terms"
+    },
+    "reported_period": "Kharif 2015-16",
+    "source_geography": {"district": "Pune", "state": "Maharashtra", "level": "district"},
+    "crop": "Maize",
+    "table_heading": "Kh Maize; A = area, P = production, Py = productivity",
+    "reported_values": {
+      "area": {"value": 32, "unit": "100 ha"},
+      "production": {"value": 27, "unit": "100 tonnes"},
+      "yield": {"value": 852, "unit": "kg/ha", "reported_directly": true}
+    },
+    "admission_blockers": [
+      "The row is visible in a third-party mirror; the primary report bytes and checksum were not obtained.",
+      "The mirror displays an All Rights Reserved notice; data reuse terms are unresolved.",
+      "The official district boundary vintage and a geography crosswalk to the weather grid are not documented.",
+      "It is a candidate district yield row, not a district weather aggregate or a farm-level join."
+    ]
+  },
+  "source": {
+    "publisher": "National Bank for Agriculture and Rural Development (NABARD)",
+    "title": "Potential Linked Credit Plan 2019-20: Pune District",
+    "url": "https://www.nabard.org/auth/writereaddata/tender/1710180622Pune%20PLP%202019-20.pdf",
+    "local_path": "data/raw/agriculture/nabard_pune_plp_2019_20.pdf",
+    "sha256": "693A6C7D082C3C761787CE0016301DA3DCBC61C57DD76E7D97C0FB481E235C2C",
+    "page": 10,
+    "table": "Area, Production & Yield of Major Crops",
+    "license_status": "reuse_terms_not_verified"
+  },
+  "geography": {
+    "district": "Pune",
+    "state": "Maharashtra",
+    "geography_level": "district",
+    "boundary_vintage_or_crosswalk": "not documented in report"
+  },
+  "crop": "Maize",
+  "reported_period": "2015-16",
+  "temporal_basis": "annual agricultural year; not Kharif-specific",
+  "reported_values": {
+    "area": {"value": 313, "unit": "100 ha"},
+    "production": {"value": 794, "unit": "100 MT"},
+    "annual_actual_rainfall": {"value": 666.4, "unit": "mm"}
+  },
+  "derived_value": {
+    "yield": {"value": 2.536741214057508, "unit": "t/ha"},
+    "formula": "(794 * 100 tonnes) / (313 * 100 hectares)",
+    "classification": "derived_from_reported_annual_area_and_production"
+  },
+  "admission_blockers": [
+    "The target pilot is Pune maize Kharif 2015; this row is annual 2015-16, not a season-specific harvest observation.",
+    "Reuse/license terms for the report data have not been verified.",
+    "The report does not document a boundary vintage or crosswalk to the weather grid.",
+    "Annual district yield and annual district rainfall do not form a same-season, district-to-grid matched observation."
+  ],
+  "assessment_runtime_use": false
+}

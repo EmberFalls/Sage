@@ -198,7 +198,9 @@ class GateVerification(unittest.TestCase):
         fresh = self.client.post('/api/scenarios/evaluate', json=request).json()
         self.assertNotEqual(fresh['input_hash'], saved['input_hash'])
         reopened = self.client.get('/api/scenarios/' + saved['scenario_id']).json()
-        self.assertEqual(reopened, saved)
+        self.assertEqual(reopened['snapshot_freshness'], 'stale')
+        self.assertEqual({k: v for k, v in reopened.items() if not k.startswith('snapshot_')},
+                         {k: v for k, v in saved.items() if not k.startswith('snapshot_')})
         self.assertEqual(reopened['scenario_request']['as_of'], '2026-11-06')
         self.assertEqual(reopened['scenario_request']['overrides']['irrigation_fraction'], 0.8)
         self.assertEqual(reopened['action_status'], 'ineligible')

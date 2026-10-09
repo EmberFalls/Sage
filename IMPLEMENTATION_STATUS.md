@@ -48,8 +48,10 @@ Detailed evidence and limitations: [verification report](demo/verification/REPOR
 
 ## Full-plan continuation (F0)
 
-F0 documentation deliverables are recorded in [`FULL_EXPANSION_STATUS.md`](FULL_EXPANSION_STATUS.md), [`docs/FIN03_SCOPE.md`](docs/FIN03_SCOPE.md), [`docs/SITEMAP.md`](docs/SITEMAP.md), [`DATA_SOURCES.md`](DATA_SOURCES.md), and [`data/frozen-baseline.yaml`](data/frozen-baseline.yaml). F0 is **PARTIAL**: one anonymous Open-Meteo historical weather sample excerpt is retained, but the required Pune maize yield/weather/NDVI/price geo-time join is not available. No external sample is wired into runtime scoring. See the full feature matrix for F01–F33 classifications and dependencies.
+F0 documentation deliverables are recorded in [`FULL_EXPANSION_STATUS.md`](FULL_EXPANSION_STATUS.md), [`docs/FIN03_SCOPE.md`](docs/FIN03_SCOPE.md), [`docs/SITEMAP.md`](docs/SITEMAP.md), [`DATA_SOURCES.md`](DATA_SOURCES.md), and [`data/frozen-baseline.yaml`](data/frozen-baseline.yaml). F0 is **PARTIAL**: a full Open-Meteo ERA5 historical weather archive is retained, but the required admitted and matched Pune maize yield/weather/NDVI/price geo-time join is not available. A Kharif 2015-16 yield row appears in a third-party mirror but remains unadmitted pending primary-source bytes, terms, and geography review. No external sample is wired into runtime scoring. See the full feature matrix for F01–F33 classifications and dependencies.
+
+Post-hackathon phase status is recorded in [`docs/PHASE_F1_F4_IMPLEMENTATION.md`](docs/PHASE_F1_F4_IMPLEMENTATION.md). The F1–F3 branch does not include F4; its stage model and model training are deferred.
 
 ## Limits
 
-No matched observed environmental/market/repayment dataset. A three-row historical weather reanalysis excerpt is retained for source feasibility only and is not runtime-ingested. Crop rules/calendar are illustrative. No real credit decision or restructuring. Existing stack uses custom CSS, sqlite3 and state navigation. Nested Pydantic objects remain dictionaries. PDF output and a video backup remain unverified/unavailable.
+No matched observed environmental/market/repayment dataset. A full historical weather reanalysis archive is retained and not runtime-ingested. A three-row excerpt remains only as outage fallback. Crop rules/calendar are illustrative. No real credit decision or restructuring. Existing stack uses custom CSS, sqlite3 and state navigation. Nested Pydantic objects remain dictionaries. PDF output and a video backup remain unverified/unavailable.

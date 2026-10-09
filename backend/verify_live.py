@@ -8,7 +8,7 @@ from app.schemas import ScenarioBundle
 
 OUT = Path(__file__).resolve().parents[1] / "demo" / "verification"
 OUT.mkdir(parents=True, exist_ok=True)
-API = os.environ.get('PHENOCREDIT_API_URL', 'http://127.0.0.1:8000').rstrip('/')
+API = os.environ.get('SAGE_API_URL', 'http://127.0.0.1:8000').rstrip('/')
 
 def call(path, payload=None):
     request = Request(API + path,

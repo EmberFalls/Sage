@@ -1,24 +1,29 @@
-# Existing app sitemap at F0 freeze
+# Application sitemap
 
-This records actual destinations found in `frontend/src/App.tsx`; it does not claim deep-link routing or production permissions. Navigation is local React state and the app has a mobile drawer. The full-product roadmap is aspirational; each unimplemented destination must be shown as unavailable or explicitly deferred when introduced.
+This records the URL-addressable destinations currently wired in `frontend/src/App.tsx`. The farmer shell is a public synthetic demo view, not a private or authenticated role. Routes shown as unavailable are explicit placeholders.
 
-| Navigation group | Destination | Current behavior | F roadmap |
+| Navigation group | Route | Destination | Current behavior | F roadmap |
 |---|---|---|---|
-| Workspace | Overview | Demo portfolio and current assessment summary | F06 |
-| Workspace | Borrowers | Search/filter synthetic borrower list; opens selected borrower detail | F03 |
-| Workspace | Borrower detail | Loan-linked demo dossier | F03 |
-| Workspace | Loans | Demo loan records for selected borrower | F05 |
-| Intelligence | Climate intelligence | Assumed/scenario climate, crop stage and climate fixture panels | F07–F10 |
-| Intelligence | Credit assessment | Current server-calculated illustrative assessment and FIN-03 input status | F13–F15 |
-| Intelligence | Scenario lab | Climate/price/irrigation/bridge assumptions, baseline/stress/action comparison | F16, F19, F31–F33 |
-| Decisions | Intervention center | Simulated proposal selection and comparison; no bank term mutation | F20 |
-| Decisions | Watchlist & reports | Rule-derived simulated warnings, JSON/CSV, print, saved snapshots | F22, F24, F30, F32 |
-| Sidebar bottom | Farmer view | Simplified synthetic borrower and scenario summary | F23 |
-| Sidebar bottom | Data & methodology | Calculation walkthrough, source classes and claim limits | F25, F29 |
+| Home | `/` | Landing and demo onboarding | Landing page with path to the workspace | F1 |
+| Workspace | `/app/overview` | Overview | Demo portfolio and current assessment summary | F1/F06 |
+| Lending | `/app/borrowers`, `/app/borrowers/:id` | Borrower registry and profile | Search, create/edit synthetic profile, loan-linked dossier | F2/F03 |
+| Lending | `/app/applications` | Applications | Persistent application draft, assessment, review, demo decision | F2/F04 |
+| Lending | `/app/loans?borrower_id=...` | Loans & repayments | Scenario schedule and synthetic repayment event ledger | F2/F05 |
+| Intelligence | `/app/climate` | Climate intelligence | Assumed/scenario climate and source status | F3/F07–F10 |
+| Intelligence | `/app/assessments` | Credit assessment | Server-calculated illustrative assessment and FIN-03 input status | F13–F15 |
+| Intelligence | `/app/scenarios` | Scenario lab | Climate/price/irrigation/bridge assumptions, baseline/stress/action | F16/F19/F31–F33 |
+| Decisions | `/app/interventions` | Intervention center | Simulated proposal selection and comparison; no bank term mutation | F20 |
+| Decisions | `/app/watchlist` | Watchlist & alerts | Rule-derived simulated warnings and snapshots | F22/F32 |
+| Operations | `/app/allocator` | Portfolio allocator | Budget-bounded, persisted synthetic support allocation with explicit priority policy | Feature F21 / phase F9 |
+| Operations | `/app/reports` | Reports & audit | JSON/CSV/print and saved snapshots | F24/F30 |
+| Operations | `/app/data-sources` | Data sources | Provider state, validated JSON import, snapshot hashes, fallback and source limitations | F3/F25 |
+| Operations | `/app/settings` | Settings | Explicit “not implemented” state; no auth or role management | F1/F26 |
+| Farmer shell | `/farmer/home`, `/farmer/my-farm`, `/farmer/my-loan`, `/farmer/outlook`, `/farmer/options`, `/farmer/help` | Farmer demo | Separate simplified synthetic demo shell; no private access boundary | F1/F23 |
+| Help | `/app/help` | Data & methodology | Calculation walkthrough, source classes and claim limits | F1/F29 |
 
-## Known navigation gaps at freeze
+## Remaining route and workflow gaps
 
-- No URL/deep-link route structure or landing/demo onboarding route (F01–F02 remain work).
-- No create/edit borrower, application wizard/review, branch assignments, operational alert state, portfolio allocator or role-based access controls (F03–F04, F21–F22, F26 remain incomplete).
-- “Climate intelligence” is not a real-source data browser and does not establish NDVI/soil/forecast availability (F08–F10/F25 remain incomplete).
-- Existing routes are a hackathon demo shell, not completed full-product pages. See `FULL_EXPANSION_STATUS.md` for per-feature classification.
+- Farmer routes do not authenticate or isolate identity; no real RBAC is implemented.
+- Settings, branch assignments, and a full authenticated application workflow remain incomplete (F21–F22/F26). The allocator and warning lifecycle are available as unauthenticated demo workflows only.
+- The weather snapshot browser does not connect sources to scoring and does not establish NDVI/soil/price/yield availability or a matched Pune maize dataset (F08–F12/F25).
+- See [`FULL_EXPANSION_STATUS.md`](../FULL_EXPANSION_STATUS.md) and [`PHASE_F1_F4_IMPLEMENTATION.md`](PHASE_F1_F4_IMPLEMENTATION.md) for completion gates.

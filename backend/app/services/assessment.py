@@ -271,6 +271,10 @@ def derive_financial_bridge(b: dict, baseline: dict, stress: dict) -> dict:
 
 def evaluate_scenario(req: ScenarioRequest) -> dict:
     b = _resolve_borrower(req.borrower_id)
+    # New demo applications can be assessed against their requested principal
+    # without mutating the borrower's existing synthetic profile.
+    if req.loan_principal_override_inr is not None:
+        b["loan_principal_inr"] = D(str(req.loan_principal_override_inr))
     baseline = _assessment(b, req, shock=False)
     stress = _assessment(b, req, shock=True)
     eligible = req.as_of < b["due_at"]
@@ -304,6 +308,8 @@ def evaluate_scenario(req: ScenarioRequest) -> dict:
             "action_minus_stress": None if action is None else {"cash_gap_inr": money(action["cash_gap_inr"] - stress["cash_gap_inr"]), "action_cost_inr": action["action_cost_inr"]}},
         "repayment_bridge": derive_financial_bridge(b, baseline, stress),
         "input_data_status": {"observed": [], "forecast": [], "assumed": ["weather", "calendar", "yield", "price"], "simulated": ["borrower", "loan", "credit history"], "unavailable": ["NDVI", "soil moisture"]},
+        "snapshot_freshness": "current",
+        "snapshot_stale_reasons": [],
         "risk_semantics": "Repayment feasibility is the fraction of 21 equally weighted hypothetical yield/price paths that settle all scheduled bank dues. This finite simulation is not calibrated to real borrowers or observed defaults.",
         "drivers": [f"Crop sale {stress['sale_date']} vs first bank due {stress['due_date']}", f"Assumed {b['crop']} heat sensitivity in {req.overrides.heatwave_growth_stage}; illustrative response", "Dated expenses, permitted bridge draws and both installments are reconciled in the cash ledger"],
         "warnings": ["All lending records are synthetic; climate/yield/price inputs are assumed.", "Crop calendar is an illustrative timing fixture, not a verified regional agronomic calendar.", "Actions require bank review; informal borrowing is a user-selected simulation."]})
