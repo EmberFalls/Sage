@@ -1,6 +1,6 @@
 # PhenoCredit implementation status
 
-Updated 2026-10-09 after G8–G9 offline rehearsal and submission readiness work.
+Updated 2026-10-09 after G8–G9 offline rehearsal, submission readiness work, and full-plan F0 scope/source freeze.
 
 ## Gates
 
@@ -46,6 +46,10 @@ Detailed evidence and limitations: [verification report](demo/verification/REPOR
 | H28 | Verified core | Configured rule IDs, thresholds and exact simulated evidence. |
 | H29 | Verified core | Accounting bridge reconciles to paise. |
 
+## Full-plan continuation (F0)
+
+F0 documentation deliverables are recorded in [`FULL_EXPANSION_STATUS.md`](FULL_EXPANSION_STATUS.md), [`docs/FIN03_SCOPE.md`](docs/FIN03_SCOPE.md), [`docs/SITEMAP.md`](docs/SITEMAP.md), [`DATA_SOURCES.md`](DATA_SOURCES.md), and [`data/frozen-baseline.yaml`](data/frozen-baseline.yaml). F0 is **PARTIAL**: one anonymous Open-Meteo historical weather sample excerpt is retained, but the required Pune maize yield/weather/NDVI/price geo-time join is not available. No external sample is wired into runtime scoring. See the full feature matrix for F01–F33 classifications and dependencies.
+
 ## Limits
 
-No observed environmental/market/repayment data. Crop rules/calendar are illustrative. No real credit decision or restructuring. Existing stack uses custom CSS, sqlite3 and state navigation. Nested Pydantic objects remain dictionaries. No Git checkpoint: workspace exposes .git as read-only. PDF output and a video backup remain unverified/unavailable.
+No matched observed environmental/market/repayment dataset. A three-row historical weather reanalysis excerpt is retained for source feasibility only and is not runtime-ingested. Crop rules/calendar are illustrative. No real credit decision or restructuring. Existing stack uses custom CSS, sqlite3 and state navigation. Nested Pydantic objects remain dictionaries. PDF output and a video backup remain unverified/unavailable.

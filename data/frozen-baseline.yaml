@@ -1,0 +1,22 @@
+frozen_at: '2026-10-09'
+scope: full-plan-f0
+demo:
+  fixture_version: demo-fixture-2026-10-09.2
+  seed: 20261009
+  engine_version: risk-engine-v2-demo.2
+  crop_rules_version: illustrative-v2
+  warning_rules_version: warnings-demo-v1
+  warning_rules_file: backend/app/config/warnings.json
+  source_manifest_version: 2
+preservation:
+  offline_walkthrough: data/fixtures/judge-walkthrough.json
+  preserve_seeded_demo: true
+  version_outputs_on_change: true
+  historical_snapshots_mutable: false
+verification_status:
+  same_versions_deterministic: documented_in_hackathon_verification
+  cross_version_baseline_stress_identity: not_yet_verified
+  source_backed_pune_maize_season_join: blocked_missing_yield_ndvi_price
+notes:
+  - This freeze records identifiers currently present in code/config, not a new model artifact or evidence of empirical calibration.
+  - No source changes are wired into runtime assessments by F0.
