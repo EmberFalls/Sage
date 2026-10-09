@@ -19,6 +19,8 @@ from app.schemas import (ApplicationCreate, ApplicationStatusUpdate, BorrowerCre
 from app.services.assessment import BORROWERS, SOURCE_VERSION, STAGE_WINDOWS, evaluate_scenario
 from app.services.sources import list_data_sources, refresh_pune_historical_weather
 from app.services.feature_ingest import freeze_feature_import
+from app.services.soil_moisture import get_soil_moisture_telemetry
+from app.services.satellite_ndvi import get_satellite_ndvi_telemetry
 
 @asynccontextmanager
 async def lifespan(app):
@@ -383,3 +385,15 @@ def import_feature_snapshot(payload: FeatureSnapshotImport):
         return freeze_feature_import(payload)
     except ValueError as exc:
         raise HTTPException(422, str(exc)) from exc
+
+
+@app.get("/api/telemetry/soil-moisture")
+def soil_moisture_telemetry(district: str = "Nashik", as_of: str = "2026-10-09"):
+    """Fetch high-resolution volumetric soil water and root-zone metrics."""
+    return get_soil_moisture_telemetry(district, as_of)
+
+
+@app.get("/api/telemetry/ndvi")
+def satellite_ndvi_telemetry(district: str = "Nashik", crop: str = "Wheat", stage: str = "flowering", as_of: str = "2026-10-09"):
+    """Fetch Sentinel-2 L2A optical NDVI vegetation index and phenology curve."""
+    return get_satellite_ndvi_telemetry(district, crop, stage, as_of)
