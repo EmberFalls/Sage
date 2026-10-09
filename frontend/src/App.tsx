@@ -1,13 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
-import { Activity, AlertTriangle, ArrowDownRight, ArrowUpRight, BarChart3, Bell, ChevronDown, ChevronRight, CircleHelp, CloudSun, Database, Download, FileText, Gauge, Leaf, Menu, Search, ShieldCheck, SlidersHorizontal, Sprout, Users, WalletCards, X } from 'lucide-react'
+import { Activity, AlertTriangle, ArrowDownRight, ArrowUpRight, BarChart3, Bell, ChevronDown, ChevronRight, CircleHelp, CloudSun, Database, Download, FileText, Gauge, Home, Leaf, Menu, Search, ShieldCheck, SlidersHorizontal, Sparkles, Sprout, Users, WalletCards, X } from 'lucide-react'
 import type { Assessment, Borrower } from './types'
 import ScenarioEvidence from './ScenarioEvidence'
+import { HeroSection } from './HeroSection'
+import { LandingPage } from './landing/LandingPage'
 
 const API = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
 const product = import.meta.env.VITE_PRODUCT_NAME || 'PhenoCredit'
 const WALKTHROUGH_REQUEST={borrower_id:'B-DEMO-001',as_of:'2026-10-09',action_id:'split_payment',overrides:{rainfall_change_pct:0,heatwave_days:4,heatwave_growth_stage:'flowering',market_price_change_pct:0,irrigation_fraction:null,assumed_informal_bridge_inr:0}}
 const nav = [
+  {group:'NAVIGATION',items:[['Landing Page','landing']]},
   {group:'WORKSPACE',items:[['Overview','overview'],['Borrowers','borrowers'],['Loans','loans']]},
   {group:'INTELLIGENCE',items:[['Climate Intelligence','climate'],['Credit Assessment','assessment'],['Scenario Lab','scenarios']]},
   {group:'DECISIONS',items:[['Intervention Center','interventions'],['Watchlist & Reports','watchlist']]},
@@ -17,7 +20,7 @@ const inr = (n:any) => `₹${fmt(n)}`
 const percent = (n:any) => `${Math.round(Number(n||0)*100)}%`
 
 function App(){
-  const [page,setPage]=useState('overview'),[borrowers,setBorrowers]=useState<Borrower[]>([]),[selected,setSelected]=useState('B-DEMO-001')
+  const [page,setPage]=useState('landing'),[borrowers,setBorrowers]=useState<Borrower[]>([]),[selected,setSelected]=useState('B-DEMO-001')
   const [assessment,setAssessment]=useState<Assessment|null>(null),[busy,setBusy]=useState(false),[error,setError]=useState(''),[drawer,setDrawer]=useState(false)
   const [appliedKey,setAppliedKey]=useState('')
   const [savedScenarios,setSavedScenarios]=useState<any[]>([])
@@ -43,8 +46,13 @@ function App(){
   const isStale=Boolean(assessment&&appliedKey!==currentKey)
   const actionRun=()=>{run()}
   const download=()=>{if(!assessment||isStale||busy)return;const blob=new Blob([JSON.stringify(assessment,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`phenocredit-${assessment.borrower_id}-${assessment.comparison_context_hash.slice(0,8)}.json`;a.click();URL.revokeObjectURL(a.href)}
-  const title=({overview:'Lender overview',borrowers:'Borrowers','borrower-detail':'Borrower detail',loans:'Loans',climate:'Climate intelligence',assessment:'Credit assessment',scenarios:'Scenario lab',interventions:'Intervention center',watchlist:'Watchlist & reports',farmer:'Farmer view',methodology:'Data & methodology'} as Record<string,string>)[page]||'Overview'
-  const sidebar=<><div className="brand"><div className="brand-mark"><Sprout size={20}/></div><div><strong>{product}</strong><span>CLIMATE CREDIT WORKSPACE</span></div><button className="icon-btn mobile-close" onClick={()=>setDrawer(false)}><X size={17}/></button></div><div className="demo-badge"><span className="pulse"/> DEMO MODE <span className="pill-light">OFFLINE READY</span></div>{nav.map(group=><div className="nav-group" key={group.group}><div className="nav-label">{group.group}</div>{group.items.map(([label,id])=><button key={id} className={`nav-item ${page===id?'active':''}`} onClick={()=>navigate(id)}><NavIcon id={id}/><span>{label}</span>{id==='scenarios'&&<i>LIVE</i>}</button>)}</div>)}<div className="sidebar-bottom"><button className={`nav-item ${page==='farmer'?'active':''}`} onClick={()=>navigate('farmer')}><Leaf size={17}/><span>Farmer view</span></button><button className={`nav-item ${page==='methodology'?'active':''}`} onClick={()=>navigate('methodology')}><CircleHelp size={17}/><span>Data & methodology</span></button><div className="user-block"><div className="avatar">AR</div><div><b>Analyst workspace</b><small>Demo access</small></div><ChevronDown size={15}/></div></div></>
+  const title=({landing:'Landing page',overview:'Lender overview',borrowers:'Borrowers','borrower-detail':'Borrower detail',loans:'Loans',climate:'Climate intelligence',assessment:'Credit assessment',scenarios:'Scenario lab',interventions:'Intervention center',watchlist:'Watchlist & reports',farmer:'Farmer view',methodology:'Data & methodology'} as Record<string,string>)[page]||'Overview'
+
+  if(page === 'landing'){
+    return <LandingPage onNavigate={navigate} />
+  }
+
+  const sidebar=<><div className="brand"><div className="brand-mark" onClick={()=>navigate('landing')} style={{cursor:'pointer'}}><Sprout size={20}/></div><div><strong>{product}</strong><span>CLIMATE CREDIT WORKSPACE</span></div><button className="icon-btn mobile-close" onClick={()=>setDrawer(false)}><X size={17}/></button></div><div className="demo-badge"><span className="pulse"/> DEMO MODE <span className="pill-light">OFFLINE READY</span></div>{nav.map(group=><div className="nav-group" key={group.group}><div className="nav-label">{group.group}</div>{group.items.map(([label,id])=><button key={id} className={`nav-item ${page===id?'active':''}`} onClick={()=>navigate(id)}><NavIcon id={id}/><span>{label}</span>{id==='scenarios'&&<i>LIVE</i>}</button>)}</div>)}<div className="sidebar-bottom"><button className={`nav-item ${page==='farmer'?'active':''}`} onClick={()=>navigate('farmer')}><Leaf size={17}/><span>Farmer view</span></button><button className={`nav-item ${page==='methodology'?'active':''}`} onClick={()=>navigate('methodology')}><CircleHelp size={17}/><span>Data & methodology</span></button><div className="user-block"><div className="avatar">AR</div><div><b>Analyst workspace</b><small>Demo access</small></div><ChevronDown size={15}/></div></div></>
   return <div className="app-shell"><aside className={`sidebar ${drawer?'open':''}`}>{sidebar}</aside>{drawer&&<button className="scrim" onClick={()=>setDrawer(false)} aria-label="Close menu"/>}<main className="main"><header className="topbar"><button className="icon-btn mobile-menu" onClick={()=>setDrawer(true)}><Menu size={19}/></button><div className="crumb">Workspace <ChevronRight size={14}/><b>{title}</b></div><div className="top-actions"><span className="data-status"><i/> {error?'Backend unavailable':busy?'Updating scenario':assess?'Demo backend connected':'Connecting to backend'}</span><span className="icon-btn" title="Demo notification indicator"><Bell size={18}/><em className="notification-dot"/></span><div className="top-avatar">AR</div></div></header><div className="page-wrap"><div className="page-heading"><div><div className="eyebrow">FIN-03 · AGRICULTURAL CREDIT RISK</div><h1>{title}</h1><p>{page==='scenarios'?'Trace climate conditions through harvest cash flow and repayment timing.':page==='overview'?'Monitor climate-linked repayment capacity across your demo portfolio.':'Explore the same borrower, season and scenario across the workflow.'}</p></div><div className="heading-actions"><div className="asof"><span className="status-dot"/> Scenario as of <b>{asOf}</b></div>{page==='scenarios'&&<><button className="btn-outline" onClick={loadWalkthrough}>Load walkthrough</button><button className="btn-outline" onClick={resetScenario}>Reset scenario</button></>}<button className="btn-outline" onClick={download} disabled={!assess||isStale||busy}><Download size={15}/> Export snapshot</button></div></div><div className="truth-banner"><ShieldCheck size={16}/><span><b>Transparent demo data</b><span> Environmental inputs are assumptions · borrower and loan records are synthetic</span></span><button onClick={()=>navigate('methodology')}>Data notes <ChevronRight size={14}/></button></div>{(busy||isStale)&&<div className="refresh-banner"><span className="pulse"/>{busy?'Recalculating from backend…':'Inputs changed · recalculation queued'}</div>}{error&&<div className="error-banner"><AlertTriangle size={16}/>{error}<button onClick={run}>Retry</button></div>}
   {page==='overview'&&<Overview borrowers={borrowers} assessment={assess} go={navigate} select={selectBorrower}/>}
   {page==='borrowers'&&<BorrowersPage rows={filtered} search={search} setSearch={setSearch} selected={selected} select={(id)=>{selectBorrower(id);navigate('borrower-detail')}} assessment={assess}/>}
@@ -61,7 +69,7 @@ function App(){
   </div></main></div>
 }
 
-function NavIcon({id}:{id:string}){const props={size:17,strokeWidth:1.8};return id==='overview'?<BarChart3 {...props}/>:id==='borrowers'?<Users {...props}/>:id==='loans'?<WalletCards {...props}/>:id==='climate'?<CloudSun {...props}/>:id==='assessment'?<Gauge {...props}/>:id==='scenarios'?<SlidersHorizontal {...props}/>:id==='interventions'?<Activity {...props}/>:<FileText {...props}/>}
+function NavIcon({id}:{id:string}){const props={size:17,strokeWidth:1.8};return id==='landing'?<Home {...props}/>:id==='overview'?<BarChart3 {...props}/>:id==='borrowers'?<Users {...props}/>:id==='loans'?<WalletCards {...props}/>:id==='climate'?<CloudSun {...props}/>:id==='assessment'?<Gauge {...props}/>:id==='scenarios'?<SlidersHorizontal {...props}/>:id==='interventions'?<Activity {...props}/>:<FileText {...props}/>}
 function Card({children,className='',style}:{children:ReactNode,className?:string,style?:CSSProperties}){return <section className={`card ${className}`} style={style}>{children}</section>}
 function SectionTitle({title,sub,action}:{title:string,sub?:string,action?:ReactNode}){return <div className="section-title"><div><h2>{title}</h2>{sub&&<p>{sub}</p>}</div>{action}</div>}
 function Empty(){return <div className="empty">Run the assessment to load the shared scenario result.</div>}
