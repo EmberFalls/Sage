@@ -1,4 +1,4 @@
-# PhenoCredit implementation status
+# Sage implementation status
 
 Updated 2026-10-09 after G8–G9 offline rehearsal, submission readiness work, and full-plan F0 scope/source freeze.
 

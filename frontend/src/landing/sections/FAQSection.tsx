@@ -8,8 +8,8 @@ export function FAQSection() {
 
   const faqs = [
     {
-      q: 'How does PhenoCredit assess crop and climate risk without on-field visits?',
-      a: 'PhenoCredit integrates regional meteorological reanalysis (temperature, heatwave duration, precipitation anomalies) with physiological crop growth stages. By mapping in-season weather events to specific sensitivity windows (such as flowering pollination), it estimates potential yield reduction and compares expected mandi harvest revenue against contractual bank due dates.',
+      q: 'How does Sage assess crop and climate risk without on-field visits?',
+      a: 'Sage integrates regional meteorological reanalysis (temperature, heatwave duration, precipitation anomalies) with physiological crop growth stages. By mapping in-season weather events to specific sensitivity windows (such as flowering pollination), it estimates potential yield reduction and compares expected mandi harvest revenue against contractual bank due dates.',
     },
     {
       q: 'What happens when satellite observations are cloud-obscured or unavailable?',
@@ -20,12 +20,12 @@ export function FAQSection() {
       a: 'The current engine uses deterministic, transparent agronomic response rules and cash-flow arithmetic rather than a black-box machine learning model. This ensures every calculation—from yield impact to due-date shortfalls and intervention fees—is fully auditable, explainable, and reproducible.',
     },
     {
-      q: 'How does PhenoCredit integrate with a lender’s Core Banking System (CBS)?',
-      a: 'PhenoCredit is architected around lightweight REST/JSON APIs and database-agnostic schemas (SQLite for demo environments, PostgreSQL for enterprise deployments). A lender can ingest standard loan portfolios (principal, interest rate, disbursement date, due date) and retrieve scenario risk scores via automated batch APIs.',
+      q: 'How does Sage integrate with a lender’s Core Banking System (CBS)?',
+      a: 'Sage is architected around lightweight REST/JSON APIs and database-agnostic schemas (SQLite for demo environments, PostgreSQL for enterprise deployments). A lender can ingest standard loan portfolios (principal, interest rate, disbursement date, due date) and retrieve scenario risk scores via automated batch APIs.',
     },
     {
       q: 'Does a risk indicator automatically approve, reject, or restructure a loan?',
-      a: 'No. PhenoCredit is strictly a decision-support and scenario-modeling platform. All candidate restructuring proposals (such as +30-day rescheduling or split-installment options) are illustrative simulations intended for review by human credit officers and risk committees.',
+      a: 'No. Sage is strictly a decision-support and scenario-modeling platform. All candidate restructuring proposals (such as +30-day rescheduling or split-installment options) are illustrative simulations intended for review by human credit officers and risk committees.',
     },
     {
       q: 'How is borrower financial data protected?',

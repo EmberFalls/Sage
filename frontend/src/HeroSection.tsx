@@ -33,12 +33,12 @@ export function HeroSection({ onNavigate }: HeroSectionProps) {
             onClick={() => onNavigate('landing')} 
             role="button" 
             tabIndex={0}
-            title="PhenoCredit Home"
+            title="Sage Home"
           >
             <div className="hero-brand-icon">
               <Layers size={18} strokeWidth={2.4} />
             </div>
-            <span className="hero-brand-name">PhenoCredit</span>
+            <span className="hero-brand-name">Sage</span>
           </div>
 
           <div className="hero-nav-divider" />

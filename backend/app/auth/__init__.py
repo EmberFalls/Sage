@@ -1,1 +1,1 @@
-"""Authentication module for PhenoCredit."""
+"""Authentication module for Sage."""

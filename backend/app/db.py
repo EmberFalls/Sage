@@ -9,9 +9,9 @@ from pathlib import Path
 
 
 def _database_path() -> Path:
-    url = os.getenv("DATABASE_URL", "sqlite:///./phenocredit.db")
+    url = os.getenv("DATABASE_URL", "sqlite:///./sage.db")
     prefix = "sqlite:///"
-    raw = url[len(prefix):] if url.startswith(prefix) else "./phenocredit.db"
+    raw = url[len(prefix):] if url.startswith(prefix) else "./sage.db"
     path = Path(raw)
     if not path.is_absolute():
         path = Path(__file__).resolve().parents[1] / path

@@ -1,4 +1,4 @@
-# PhenoCredit
+# Sage
 
 An offline-first prototype for FIN-03: climate-aware agricultural credit risk assessment. It demonstrates one lender workflow from crop-stage scenario assumptions through harvest timing, dated repayment cash, modeled debt pressure, and simulated interventions.
 
@@ -18,10 +18,10 @@ Requires Python 3.10+, Node.js 20+ and PowerShell 7 or Windows PowerShell. From 
 py -m venv backend/.venv
 backend/.venv/Scripts/python.exe -m pip install -r backend/requirements.txt
 cd frontend; npm ci; cd ..
-./scripts/Start-PhenoCreditDemo.ps1
+./scripts/Start-SageDemo.ps1
 ```
 
-Open `http://127.0.0.1:5173/`. The API and browser app use only loopback/local fixtures. The launcher seeds two demo profiles automatically. In Scenario Lab, **Load walkthrough** applies the saved flowering-heat/split-payment scenario from `data/fixtures/judge-walkthrough.json`; **Reset scenario** restores the default borrower, date and baseline controls. Optional settings can be copied from `.env.example` to `.env`; the launcher loads the supported variables for both services. Reset/reseed the deterministic demo records with `./scripts/Reset-PhenoCreditDemo.ps1`. Stop only launcher-owned processes with `./scripts/Stop-PhenoCreditDemo.ps1`. Scenario reports stay in the local SQLite database when reseeding.
+Open `http://127.0.0.1:5173/`. The API and browser app use only loopback/local fixtures. The launcher seeds two demo profiles automatically. In Scenario Lab, **Load walkthrough** applies the saved flowering-heat/split-payment scenario from `data/fixtures/judge-walkthrough.json`; **Reset scenario** restores the default borrower, date and baseline controls. Optional settings can be copied from `.env.example` to `.env`; the launcher loads the supported variables for both services. Reset/reseed the deterministic demo records with `./scripts/Reset-SageDemo.ps1`. Stop only launcher-owned processes with `./scripts/Stop-SageDemo.ps1`. Scenario reports stay in the local SQLite database when reseeding.
 
 ## Main API
 
