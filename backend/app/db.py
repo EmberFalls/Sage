@@ -1,5 +1,6 @@
 """Tiny SQLite snapshot store; the assessment calculation itself remains stateless."""
 import json
+import hashlib
 import os
 import sqlite3
 from contextlib import contextmanager
@@ -41,6 +42,15 @@ def _connect():
         request_json TEXT NOT NULL,
         result_json TEXT NOT NULL,
         created_at TEXT NOT NULL
+    )""")
+    con.execute("""CREATE TABLE IF NOT EXISTS comparison_bundles (
+        bundle_id TEXT PRIMARY KEY, context_hash TEXT NOT NULL, bundle_json TEXT NOT NULL, created_at TEXT NOT NULL
+    )""")
+    con.execute("""CREATE TABLE IF NOT EXISTS scenario_supersessions (
+        scenario_id TEXT PRIMARY KEY, supersedes_id TEXT NOT NULL, created_at TEXT NOT NULL
+    )""")
+    con.execute("""CREATE TABLE IF NOT EXISTS comparison_bundle_supersessions (
+        bundle_id TEXT PRIMARY KEY, supersedes_bundle_id TEXT NOT NULL, created_at TEXT NOT NULL
     )""")
     con.execute("""CREATE TABLE IF NOT EXISTS schema_migrations (
         version INTEGER PRIMARY KEY,
@@ -254,22 +264,56 @@ def list_source_records() -> list[dict]:
         return [json.loads(row[0]) for row in con.execute("SELECT record_json FROM data_sources ORDER BY source_id")]
 
 
-def save_scenario(scenario_id: str, borrower_id: str, input_hash: str, request: dict, result: dict) -> None:
+def _canonical_json(value: dict) -> str:
+    """Stable JSON representation used by persisted snapshot content hashes."""
+    return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False, allow_nan=False)
+
+
+def _snapshot_content_hash(result: dict) -> str:
+    # Transport/storage metadata is deliberately excluded from deterministic content.
+    content = {key: value for key, value in result.items()
+               if key not in {"created_at", "result_hash", "snapshot_freshness", "snapshot_stale_reasons"}}
+    return hashlib.sha256(_canonical_json(content).encode("utf-8")).hexdigest()
+
+
+def save_scenario(scenario_id: str, borrower_id: str, input_hash: str, request: dict, result: dict) -> dict:
     with _connect() as con:
+        existing = con.execute("SELECT 1 FROM scenario_snapshots WHERE scenario_id=?", (scenario_id,)).fetchone()
+        if existing is None:
+            prior_rows = con.execute("SELECT scenario_id, request_json FROM scenario_snapshots WHERE borrower_id=? ORDER BY created_at DESC", (borrower_id,)).fetchall()
+            supersedes_id = next((row["scenario_id"] for row in prior_rows
+                if json.loads(row["request_json"]).get("action_id", "none") == request.get("action_id", "none")), None)
+            if supersedes_id and supersedes_id != scenario_id:
+                con.execute("INSERT OR IGNORE INTO scenario_supersessions VALUES (?, ?, ?)",
+                    (scenario_id, supersedes_id, datetime.now(timezone.utc).isoformat()))
         con.execute("""INSERT INTO scenario_snapshots
             (scenario_id, borrower_id, input_hash, request_json, result_json, created_at)
             VALUES (?, ?, ?, ?, ?, ?)
             ON CONFLICT(scenario_id) DO NOTHING""",
-            (scenario_id, borrower_id, input_hash, json.dumps(request, sort_keys=True),
-             json.dumps(result, sort_keys=True), datetime.now(timezone.utc).isoformat()))
+            (scenario_id, borrower_id, input_hash, _canonical_json(request),
+             _canonical_json(result), datetime.now(timezone.utc).isoformat()))
+        row = con.execute("SELECT result_json, created_at FROM scenario_snapshots WHERE scenario_id=?", (scenario_id,)).fetchone()
+        supersession = con.execute("SELECT supersedes_id FROM scenario_supersessions WHERE scenario_id=?", (scenario_id,)).fetchone()
+    stored = json.loads(row["result_json"])
+    stored["created_at"] = row["created_at"]
+    stored["result_hash"] = _snapshot_content_hash(stored)
+    if supersession:
+        stored["supersedes_id"] = supersession["supersedes_id"]
+    return stored
 
 
 def get_scenario(scenario_id: str) -> dict | None:
     with _connect() as con:
-        row = con.execute("SELECT result_json, request_json FROM scenario_snapshots WHERE scenario_id=?", (scenario_id,)).fetchone()
+        row = con.execute("SELECT result_json, request_json, created_at FROM scenario_snapshots WHERE scenario_id=?", (scenario_id,)).fetchone()
     if not row:
         return None
     result = json.loads(row["result_json"])
+    result["created_at"] = row["created_at"]
+    result["result_hash"] = _snapshot_content_hash(result)
+    with _connect() as con:
+        supersession = con.execute("SELECT supersedes_id FROM scenario_supersessions WHERE scenario_id=?", (scenario_id,)).fetchone()
+    if supersession:
+        result["supersedes_id"] = supersession["supersedes_id"]
     # Earlier snapshots predate the request echo used by the reopen UI. Keep
     # immutable results intact and fill that UI-only field from the stored request.
     from app.schemas import ScenarioRequest
@@ -297,9 +341,67 @@ def get_scenario(scenario_id: str) -> dict | None:
     versions = result.get("source_versions", {})
     if versions.get("engine") != ENGINE_VERSION:
         reasons.append("engine_version_changed")
+    weather_path = Path(__file__).resolve().parents[2] / "data" / "raw" / "open_meteo" / "pune_kharif_2015_era5.json"
+    frozen_weather_hash = versions.get("weather_snapshot_hash")
+    if frozen_weather_hash and weather_path.exists():
+        current_weather_hash = hashlib.sha256(weather_path.read_bytes()).hexdigest()
+        if frozen_weather_hash != current_weather_hash:
+            reasons.append("source_snapshot_changed")
     result["snapshot_freshness"] = "stale" if reasons else "current"
     result["snapshot_stale_reasons"] = reasons
+    with _connect() as con:
+        bundle_rows = con.execute("SELECT bundle_id, bundle_json FROM comparison_bundles ORDER BY created_at DESC").fetchall()
+    for bundle_row in bundle_rows:
+        refs = json.loads(bundle_row["bundle_json"])
+        linked_ids = {refs["baseline_ref"]["scenario_id"], refs["stress_ref"]["scenario_id"],
+                      *[item["scenario_id"] for item in refs["candidate_refs"]]}
+        if scenario_id in linked_ids:
+            result["comparison_bundle_id"] = bundle_row["bundle_id"]
+            break
     return result
+
+
+def save_comparison_bundle(bundle: dict) -> dict:
+    content = {key: value for key, value in bundle.items() if key not in {"created_at", "bundle_hash", "bundle_id"}}
+    bundle_hash = hashlib.sha256(_canonical_json(content).encode("utf-8")).hexdigest()
+    bundle_id = bundle_hash[:24]
+    with _connect() as con:
+        exists = con.execute("SELECT 1 FROM comparison_bundles WHERE bundle_id=?", (bundle_id,)).fetchone()
+        if exists is None:
+            prior = con.execute("SELECT bundle_id, bundle_json FROM comparison_bundles ORDER BY created_at DESC").fetchall()
+            supersedes = next((row["bundle_id"] for row in prior
+                if json.loads(row["bundle_json"]).get("borrower_id") == bundle.get("borrower_id")), None)
+            if supersedes:
+                con.execute("INSERT OR IGNORE INTO comparison_bundle_supersessions VALUES (?, ?, ?)",
+                    (bundle_id, supersedes, datetime.now(timezone.utc).isoformat()))
+        con.execute("""INSERT INTO comparison_bundles (bundle_id, context_hash, bundle_json, created_at)
+            VALUES (?, ?, ?, ?) ON CONFLICT(bundle_id) DO NOTHING""",
+            (bundle_id, bundle["comparison_context_hash"], _canonical_json(content), datetime.now(timezone.utc).isoformat()))
+        row = con.execute("SELECT bundle_json, created_at FROM comparison_bundles WHERE bundle_id=?", (bundle_id,)).fetchone()
+        supersession = con.execute("SELECT supersedes_bundle_id FROM comparison_bundle_supersessions WHERE bundle_id=?", (bundle_id,)).fetchone()
+    saved = json.loads(row["bundle_json"])
+    saved["bundle_id"] = bundle_id
+    saved["created_at"] = row["created_at"]
+    saved["bundle_hash"] = bundle_hash
+    if supersession:
+        saved["supersedes_bundle_id"] = supersession["supersedes_bundle_id"]
+    return saved
+
+
+def get_comparison_bundle(bundle_id: str) -> dict | None:
+    with _connect() as con:
+        row = con.execute("SELECT bundle_json, created_at FROM comparison_bundles WHERE bundle_id=?", (bundle_id,)).fetchone()
+        supersession = con.execute("SELECT supersedes_bundle_id FROM comparison_bundle_supersessions WHERE bundle_id=?", (bundle_id,)).fetchone()
+    if not row:
+        return None
+    saved = json.loads(row["bundle_json"])
+    saved["bundle_id"] = bundle_id
+    saved["created_at"] = row["created_at"]
+    content = {key: value for key, value in saved.items() if key not in {"created_at", "bundle_hash", "bundle_id"}}
+    saved["bundle_hash"] = hashlib.sha256(_canonical_json(content).encode("utf-8")).hexdigest()
+    if supersession:
+        saved["supersedes_bundle_id"] = supersession["supersedes_bundle_id"]
+    return saved
 
 
 def list_scenarios(limit: int = 50) -> list[dict]:

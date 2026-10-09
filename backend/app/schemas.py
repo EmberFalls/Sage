@@ -57,6 +57,11 @@ class ScenarioBundle(BaseModel):
     credit_history_summary: dict[str, Any] | None = None
     feasibility_detail: dict[str, Any] | None = None
     f5_ledger_version: str | None = None
+    # Storage metadata is separate from the deterministic assessment content.
+    created_at: str | None = None
+    result_hash: str | None = None
+    supersedes_id: str | None = None
+    comparison_bundle_id: str | None = None
 
 
 class BorrowerCreate(BaseModel):
