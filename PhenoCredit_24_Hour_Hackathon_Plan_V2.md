@@ -1,8 +1,8 @@
-# PhenoCredit — 24-Hour Hackathon Implementation Master Plan (V2)
+# Sage — 24-Hour Hackathon Implementation Master Plan (V2)
 
 **Version:** 2.0 (9 October 2026) | **Event:** FUSION 2026 | **Problem:** FIN-03 — Climate-Aware Credit Risk Assessment for Agriculture (NABARD)  
 **Deadline:** One 24-hour implementation window | **Recommended team:** 4 | **Output:** One integrated, beautiful, working website  
-**Companion / next stage:** `PhenoCredit_FULL_Implementation_Plan_V2.md`. **Read this file first and execute it first.** The full plan is not permission to add any extra scope before the 24-hour release gates pass.
+**Companion / next stage:** `Sage_FULL_Implementation_Plan_V2.md`. **Read this file first and execute it first.** The full plan is not permission to add any extra scope before the 24-hour release gates pass.
 
 > **Build this, not a slideshow:** a polished lender-facing agricultural credit platform with a borrower/loan system, crop/weather/soil/NDVI/price intelligence, dynamic financial assessment, a genuinely connected what-if lab, a simulated hidden-debt-cycle explorer, and feasible intervention comparisons. Reuse established product features freely. Our distinction is an unusually coherent end-to-end climate-to-finance-to-action workflow, **not** an unsupported patent/academic claim of inventing satellite-driven agricultural credit scoring.
 
@@ -16,9 +16,9 @@
 
 **Source-of-truth precedence:** (1) official FIN-03 requirements; (2) this hackathon V2 file for what to build now; (3) this file's interface contracts and invariants; (4) full-plan V2 for *architectural background and post-release upgrades only*; (5) the improvements-file analysis below. If documents conflict about scope, **this file wins until the hackathon release is verified**.
 
-**Product name:** `PhenoCredit` is a *working name*, not a permanent brand decision. Create a `PRODUCT_NAME` config/environment value and use it throughout the UI so branding can change without editing domain logic.
+**Product name:** `Sage` is a *working name*, not a permanent brand decision. Create a `PRODUCT_NAME` config/environment value and use it throughout the UI so branding can change without editing domain logic.
 
-**The explicit path to full:** G0–G9 hackathon gates → offline working release + source/claim audit + passing tests + acceptance sign-off → optional extension gates in `PhenoCredit_FULL_Implementation_Plan_V2.md`. Do **not** reinitialize the repository, rebuild the UI framework, duplicate assessment services, or force an early migration to PostgreSQL just to satisfy the full document.
+**The explicit path to full:** G0–G9 hackathon gates → offline working release + source/claim audit + passing tests + acceptance sign-off → optional extension gates in `Sage_FULL_Implementation_Plan_V2.md`. Do **not** reinitialize the repository, rebuild the UI framework, duplicate assessment services, or force an early migration to PostgreSQL just to satisfy the full document.
 
 **What's new in V2:** the original 24-hour coverage remains, but three features now have concrete designs and tests: `H27` **Baseline / Climate Shock / Intervention comparison**, `H28` **Debt-Cycle Early-Warning Rules**, and `H29` **Repayment-Gap Financial Impact Waterfall**. Their logic is entirely derived from the *same* authoritative scenario assessment; they must not have independent score calculators. Six other aspects of the nine-item improvements memo are treated as refinements or already-existing requirements, not duplicate subsystems.
 
@@ -48,7 +48,7 @@
 
 ### 0.1 The one-line demo story
 
-> “A farmer can repay the bank on time and still fall into financial strain. PhenoCredit traces crop-stage climate stress into harvest income and dated loan cash flow, contrasts formal repayment with modeled financial sustainability, and compares eligible actions across future seasons.”
+> “A farmer can repay the bank on time and still fall into financial strain. Sage traces crop-stage climate stress into harvest income and dated loan cash flow, contrasts formal repayment with modeled financial sustainability, and compares eligible actions across future seasons.”
 
 **Core path that must work:** `Overview → Borrower → Farm/Loan Data → Dynamic Assessment → Scenario Lab → Multi-Season Debt Cycle → Intervention → Report`.
 
@@ -180,7 +180,7 @@ Don't implement independent client calculators for the dashboard and Scenario La
 ### 2.3 Minimal repo tree and team-owned files
 
 ```text
-phenocredit-hack/
+sage-hack/
   README.md
   IMPLEMENTATION_STATUS.md
   DATA_SOURCES.md
@@ -247,7 +247,7 @@ Use **Inter** or IBM Plex Sans, optionally IBM Plex Mono for figures. Sidebar 23
 ### 3.2 Sidebar hierarchy (7 product sections)
 
 ```text
-PhenoCredit                       [DEMO MODE]
+Sage                       [DEMO MODE]
 
 WORKSPACE
   Overview
@@ -714,7 +714,7 @@ Choose one clearly labeled borrower and real-source climate season fixture. Base
 
 ### Scenario B — Successful bank repayment, unstable total debt
 
-A borrower facing a bank due-date shortfall can pay the bank by taking a **simulated** ₹X informal loan. Show formal bank repayment green, new liability orange, next-season accumulated interest/due red. Toggle bridge OFF to display formal gap. Distinguish “on-time institutional ledger” from “cash flow sufficient without new debt”. This is PhenoCredit's best judge-facing differentiation.
+A borrower facing a bank due-date shortfall can pay the bank by taking a **simulated** ₹X informal loan. Show formal bank repayment green, new liability orange, next-season accumulated interest/due red. Toggle bridge OFF to display formal gap. Distinguish “on-time institutional ledger” from “cash flow sufficient without new debt”. This is Sage's best judge-facing differentiation.
 
 ### Scenario C — Intervention has a trade-off
 
@@ -897,7 +897,7 @@ The win condition is **a convincing product the judges can use**: lending essent
 Paste the following as the **first Codex prompt** in an empty repository containing this MD file (and, optionally, the full companion). This is part of the plan and is designed to prevent 60%-complete outputs.
 
 ```text
-Read PhenoCredit_24_Hour_Hackathon_Plan_V2.md completely. This is the authoritative 24-hour FIN-03 implementation specification. The full-product V2 plan is an upgrade roadmap ONLY, not current scope.
+Read Sage_24_Hour_Hackathon_Plan_V2.md completely. This is the authoritative 24-hour FIN-03 implementation specification. The full-product V2 plan is an upgrade roadmap ONLY, not current scope.
 
 Begin with G0 now and write working code, not just a plan. Build the app in this repository. Use the fixed React+TypeScript+Vite/Tailwind/shadcn/ui/FastAPI/Pydantic/SQLAlchemy/SQLite stack. Do not add Redis, Kafka, Celery, Kubernetes or a second risk engine. Create IMPLEMENTATION_STATUS.md with H01–H29 (including H27/H28/H29) and gate G0–G9 verification evidence. Keep snapshots/source provenance and model/engine versions. Follow strict dependency order and avoid dead UI.
 
@@ -906,7 +906,7 @@ Make one real borrower-to-intervention vertical slice first. The most important 
 After each gate, actually start/test the app, record command outputs and route/UI verification. Keep Git checkpoints. Mark incomplete or unverifiable work honestly. No fake financial default accuracy or hidden debt detection. Preserve a cached fully offline demo. Continue through G9 as execution time permits, but never declare completion until the listed acceptance suite and end-to-end user walkthrough pass. Ask for user intervention only when a choice cannot be inferred safely.
 ```
 
-**Repository layout at G0:** put this specification at the root as `PhenoCredit_24_Hour_Hackathon_Plan_V2.md` and use the original `backend/` and `frontend/` directories defined in §2.3. Keep `IMPLEMENTATION_STATUS.md`, `DATA_SOURCES.md`, `data/manifest.yaml`, `.env.example` and README current throughout. If the project is renamed, change only `PRODUCT_NAME` and the presentation copy, not schema or public source identifiers.
+**Repository layout at G0:** put this specification at the root as `Sage_24_Hour_Hackathon_Plan_V2.md` and use the original `backend/` and `frontend/` directories defined in §2.3. Keep `IMPLEMENTATION_STATUS.md`, `DATA_SOURCES.md`, `data/manifest.yaml`, `.env.example` and README current throughout. If the project is renamed, change only `PRODUCT_NAME` and the presentation copy, not schema or public source identifiers.
 
 **End-of-hackathon handoff to the full plan:** archive a tagged/committed **verified hackathon baseline**, with actual feature matrix, source manifest, current model artifact and its calibration limits, screenshots or explicit manual checks, reproducible offline demo seed, technical debt list, and known issues. Then read the full-plan V2's **transition/upgrade section**. Never run full-plan F0 against an existing repo as if it were blank; map existing H IDs to full F IDs and implement only missing or upgraded behavior.
 
@@ -915,8 +915,8 @@ After each gate, actually start/test the app, record command outputs and route/U
 ## 14. Primary source links and context
 
 - Official FIN-03: user-uploaded `Fusion 2026 Finance Problem Statements.pdf`.
-- Research/feature reference: user-uploaded `FIN-03_PhenoCredit_Solution_Blueprint.md`.
-- Patent/literature audit: `PhenoCredit_Research_Patent_Audit_2026-10-09.md` (relevant documents: US20180330435A1, EP4145375B1, US12182751B2, US8290795B2; consult patent counsel for commercial implications).
+- Research/feature reference: user-uploaded `FIN-03_Sage_Solution_Blueprint.md`.
+- Patent/literature audit: `Sage_Research_Patent_Audit_2026-10-09.md` (relevant documents: US20180330435A1, EP4145375B1, US12182751B2, US8290795B2; consult patent counsel for commercial implications).
 - CY-Bench: https://zenodo.org/records/13838912 and https://essd.copernicus.org/articles/18/3997/2026/ .
 - Open-Meteo historical data: https://open-meteo.com/en/docs/historical-weather-api .
 - Open-Meteo seasonal forecast: https://open-meteo.com/en/docs/seasonal-forecast-api .

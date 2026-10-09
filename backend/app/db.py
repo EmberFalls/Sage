@@ -55,6 +55,25 @@ def _connect():
         migration = Path(__file__).resolve().parents[1] / "migrations" / "0003_source_refresh_history.sql"
         con.executescript(migration.read_text(encoding="utf-8"))
         con.execute("INSERT INTO schema_migrations VALUES (3, ?)", (datetime.now(timezone.utc).isoformat(),))
+    con.execute("""CREATE TABLE IF NOT EXISTS users (
+        id TEXT PRIMARY KEY,
+        role TEXT NOT NULL,
+        name TEXT NOT NULL,
+        email TEXT UNIQUE,
+        phone TEXT UNIQUE,
+        password_hash TEXT,
+        linked_borrower_id TEXT,
+        is_active INTEGER NOT NULL DEFAULT 1,
+        created_at TEXT NOT NULL
+    )""")
+    con.execute("""CREATE TABLE IF NOT EXISTS otp_sessions (
+        id TEXT PRIMARY KEY,
+        phone TEXT NOT NULL,
+        otp_hash TEXT NOT NULL,
+        expires_at TEXT NOT NULL,
+        used INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL
+    )""")
     try:
         with con:
             yield con

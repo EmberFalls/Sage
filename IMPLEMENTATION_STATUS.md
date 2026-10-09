@@ -50,11 +50,11 @@ Detailed evidence and limitations: [verification report](demo/verification/REPOR
 
 F0 documentation deliverables are recorded in [`FULL_EXPANSION_STATUS.md`](FULL_EXPANSION_STATUS.md), [`docs/FIN03_SCOPE.md`](docs/FIN03_SCOPE.md), [`docs/SITEMAP.md`](docs/SITEMAP.md), [`DATA_SOURCES.md`](DATA_SOURCES.md), and [`data/frozen-baseline.yaml`](data/frozen-baseline.yaml). F0 is **PARTIAL**: a full Open-Meteo ERA5 historical weather archive is retained, but the required admitted and matched Pune maize yield/weather/NDVI/price geo-time join is not available. A Kharif 2015-16 yield row appears in a third-party mirror but remains unadmitted pending primary-source bytes, terms, and geography review. No external sample is wired into runtime scoring. See the full feature matrix for F01–F33 classifications and dependencies.
 
-Post-hackathon phase status is recorded in [`docs/PHASE_F1_F4_IMPLEMENTATION.md`](docs/PHASE_F1_F4_IMPLEMENTATION.md). The F1–F3 branch does not include F4; its stage model and model training are deferred.
+Post-hackathon phase status is recorded in [`docs/PHASE_F1_F4_IMPLEMENTATION.md`](docs/PHASE_F1_F4_IMPLEMENTATION.md). F4 is implemented for the explicitly illustrative demo path; historical yield model evaluation is blocked on admitted aligned outcomes and remains deferred.
 
 ## Dated weather and crop stage issue
 
-Implemented: `GET /api/crop-calendar`; calendar provenance and bounded windows; date-based hypothetical heat placement; ERA5 daily stage aggregates for overlapping Pune dates only; `as_of` cutoff; explicit missing geography/date states; versioned illustrative yield metadata. The default 2026 Nashik demo has no geography match for the Pune ERA5 grid, and its season also does not overlap the 2015 archive; both remain visibly missing. No historical yield baseline/model is available because aligned, admitted yield rows are absent. API suite: 20 tests pass. Frontend production build passes. Browser check: baseline flowering heat vs July 1 planting heat changed stage stress and projected yield (3.05 to 3.14 t/ha) through the UI.
+Implemented: `GET /api/crop-calendar`; non-overlapping season-relative stages; explicit short-season unavailable states; date-based hypothetical heat placement; checksum/schema-validated ERA5 daily features for complete overlapping Pune stages; five-day as-of publication cutoff; observed stage weather contributes to the versioned illustrative stress/yield rule; explicit missing geography/date/coverage states. The default 2026 Nashik demo remains visibly without matched ERA5 evidence. No admitted aligned yield rows exist, so a historical yield model is not trained or calibrated. API suite: 22 tests pass. Frontend build status is recorded in the phase handoff.
 
 ## Limits
 

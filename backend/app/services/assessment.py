@@ -14,10 +14,10 @@ from app.services.fixtures import BORROWERS
 
 D = Decimal
 SOURCE_VERSION = "demo-fixture-2026-10-09.2"
-CALENDAR_VERSION = "illustrative-stage-calendar-v3"
+CALENDAR_VERSION = "illustrative-stage-calendar-v4"
 CALENDAR_PROVENANCE = {
     "source": "Sage illustrative demo rule; no region-verified crop calendar admitted",
-    "method": "fixed inclusive days-after-sowing windows, clipped to declared harvest date",
+    "method": "inclusive season-relative windows preserving fixed stage proportions; short seasons with fewer than five days expose later stages as unavailable",
     "uncertainty": "high; dates are demo assumptions and are not an agronomic recommendation",
     "geography": "unverified; not district calibrated",
     "version": CALENDAR_VERSION,
@@ -25,6 +25,11 @@ CALENDAR_PROVENANCE = {
     "timezone_rule": "inclusive ISO calendar dates; weather day labels retain the provider timezone; no UTC date conversion",
 }
 STAGE_WINDOWS = {"planting": (0, 24), "vegetative": (25, 54), "flowering": (55, 75), "grain_fill": (76, 112), "harvest": (113, 145)}
+STAGE_NAMES = tuple(STAGE_WINDOWS)
+STAGE_WEIGHTS = tuple(end - start + 1 for start, end in STAGE_WINDOWS.values())
+WEATHER_AVAILABILITY_LAG_DAYS = 5
+WEATHER_HEAT_THRESHOLD_C = 35.0
+ILLUSTRATIVE_RAIN_REFERENCE_MM_PER_DAY = 4.0
 SENSITIVITY = {
     "Wheat": {"planting": "0.4", "vegetative": "0.6", "flowering": "1", "grain_fill": "0.85", "harvest": "0.25"},
     "Maize": {"planting": "0.45", "vegetative": "0.65", "flowering": "1", "grain_fill": "0.8", "harvest": "0.3"},
@@ -34,22 +39,39 @@ WEATHER_PATH = Path(__file__).parents[3] / "data" / "raw" / "open_meteo" / "pune
 
 
 def _calendar(b: dict) -> list[dict]:
-    """Materialize inclusive local-date windows and explicitly flag clipping/invalid windows."""
-    rows = []
-    for name, (start, end) in STAGE_WINDOWS.items():
-        start_date = min(b["sowing_date"] + timedelta(days=start), b["harvest_date"])
-        end_date = min(b["sowing_date"] + timedelta(days=end), b["harvest_date"])
-        valid = start_date <= end_date
-        rows.append({"name": name, "start_date": start_date.isoformat(), "end_date": end_date.isoformat(),
-                     "calendar_status": "assumed" if valid else "outside_declared_season",
-                     "overlap": False, "source": CALENDAR_PROVENANCE["source"],
+    """Partition an inclusive season into ordered, non-overlapping illustrative stages."""
+    sowing, harvest = b["sowing_date"], b["harvest_date"]
+    if harvest < sowing:
+        raise ValueError("Harvest date must be on or after sowing date")
+    days = (harvest - sowing).days + 1
+    stage_days = [0] * len(STAGE_NAMES)
+    if days >= len(STAGE_NAMES):
+        remaining = days - len(STAGE_NAMES)
+        quotas = [remaining * weight / sum(STAGE_WEIGHTS) for weight in STAGE_WEIGHTS]
+        stage_days = [1 + int(quota) for quota in quotas]
+        for index in sorted(range(len(quotas)), key=lambda i: (quotas[i] - int(quotas[i]), -i), reverse=True)[:days - sum(stage_days)]:
+            stage_days[index] += 1
+    else:
+        # Too few calendar days to represent every stage. Keep the first available
+        # windows explicit and mark later stages unavailable rather than collapsing
+        # them onto harvest day or inventing overlap.
+        stage_days[:days] = [1] * days
+    rows, cursor = [], sowing
+    for index, name in enumerate(STAGE_NAMES):
+        count = stage_days[index]
+        if count:
+            start_date, end_date = cursor, cursor + timedelta(days=count - 1)
+            cursor = end_date + timedelta(days=1)
+            status = "assumed_illustrative"
+        else:
+            start_date = end_date = None
+            status = "unavailable_short_season"
+        rows.append({"name": name, "start_date": start_date.isoformat() if start_date else None,
+                     "end_date": end_date.isoformat() if end_date else None, "calendar_status": status,
+                     "overlap": False, "gap_before_days": 0, "source": CALENDAR_PROVENANCE["source"],
                      "method": CALENDAR_PROVENANCE["method"], "uncertainty": CALENDAR_PROVENANCE["uncertainty"],
                      "geography": CALENDAR_PROVENANCE["geography"], "version": CALENDAR_VERSION,
                      "timezone": CALENDAR_PROVENANCE["timezone"]})
-    for prev, cur in zip(rows, rows[1:]):
-        if date.fromisoformat(cur["start_date"]) <= date.fromisoformat(prev["end_date"]):
-            prev["overlap"] = cur["overlap"] = True
-            prev["calendar_status"] = cur["calendar_status"] = "overlap_flagged"
     return rows
 
 
@@ -58,31 +80,116 @@ def _daily_reanalysis(b: dict, stages: list[dict], as_of: date) -> dict:
     if b["district"].strip().casefold() != "pune":
         return {"source_class": "reanalysis", "status": "missing_geography_mismatch", "timezone": "Asia/Kolkata", "stages": {}}
     try:
-        payload = json.loads(WEATHER_PATH.read_text(encoding="utf-8"))
+        raw_bytes = WEATHER_PATH.read_bytes()
+        if hashlib.sha256(raw_bytes).hexdigest().upper() != "5B1CBCFC830C3FBDD67C53A76AB7E220A88C23D56177DF10B7AED1C40E495F9E":
+            return {"source_class": "reanalysis", "status": "invalid_fixture_checksum", "timezone": "Asia/Kolkata", "stages": {}}
+        payload = json.loads(raw_bytes)
     except (OSError, json.JSONDecodeError):
         return {"source_class": "reanalysis", "status": "missing_fixture", "timezone": "Asia/Kolkata", "stages": {}}
+    if payload.get("timezone") != "Asia/Kolkata":
+        return {"source_class": "reanalysis", "status": "invalid_fixture_timezone", "timezone": payload.get("timezone"), "stages": {}}
     daily = payload["daily"]
+    variable_names = ("time", "precipitation_sum", "temperature_2m_max", "temperature_2m_min")
+    if any(name not in daily for name in variable_names) or len({len(daily[name]) for name in variable_names}) != 1:
+        return {"source_class": "reanalysis", "status": "invalid_fixture_schema", "timezone": "Asia/Kolkata", "stages": {}}
+    if any(any(value is None for value in daily[name]) for name in variable_names[1:]):
+        return {"source_class": "reanalysis", "status": "invalid_fixture_missing_values", "timezone": "Asia/Kolkata", "stages": {}}
     rows = {date.fromisoformat(day): {"precipitation_mm": rain, "tmax_c": high, "tmin_c": low}
             for day, rain, high, low in zip(daily["time"], daily["precipitation_sum"], daily["temperature_2m_max"], daily["temperature_2m_min"])}
+    if len(rows) != len(daily["time"]):
+        return {"source_class": "reanalysis", "status": "invalid_fixture_duplicate_dates", "timezone": "Asia/Kolkata", "stages": {}}
+    # ERA5 is published with a five-day delay. For historical as-of replay,
+    # enforce the same availability boundary instead of using hindsight.
+    available_through = as_of - timedelta(days=WEATHER_AVAILABILITY_LAG_DAYS)
     output = {}
     any_rows = False
     for stage in stages:
-        start, end = date.fromisoformat(stage["start_date"]), min(date.fromisoformat(stage["end_date"]), as_of)
-        selected = [v for day, v in rows.items() if start <= day <= end and day <= as_of]
+        if not stage["start_date"]:
+            output[stage["name"]] = {"status": "unavailable_short_season", "days_observed": 0}
+            continue
+        start = date.fromisoformat(stage["start_date"])
+        end = min(date.fromisoformat(stage["end_date"]), available_through)
+        expected = max(0, (end - start).days + 1)
+        selected_days = sorted(day for day in rows if start <= day <= end)
+        selected = [rows[day] for day in selected_days]
         if selected:
             any_rows = True
-            output[stage["name"]] = {"status": "available", "days_observed": len(selected),
+            output[stage["name"]] = {"status": "available" if len(selected) == expected else "partial_coverage",
+                "days_expected_available": expected, "days_observed": len(selected),
+                "missing_days": max(0, expected - len(selected)), "coverage_fraction": round(len(selected) / expected, 4) if expected else 0,
                 "precipitation_total_mm": round(sum(x["precipitation_mm"] for x in selected), 2),
                 "tmax_mean_c": round(sum(x["tmax_c"] for x in selected) / len(selected), 2),
-                "tmax_ge_35c_days": sum(x["tmax_c"] >= 35 for x in selected),
+                "tmax_ge_threshold_days": sum(x["tmax_c"] >= WEATHER_HEAT_THRESHOLD_C for x in selected),
+                "heat_threshold_c": WEATHER_HEAT_THRESHOLD_C,
                 "tmin_mean_c": round(sum(x["tmin_c"] for x in selected) / len(selected), 2),
-                "date_start": max(start, min(rows)), "date_end": min(end, max(rows))}
+                "precipitation_unit": "mm", "temperature_unit": "degC",
+                "date_start": selected_days[0].isoformat(), "date_end": selected_days[-1].isoformat()}
         else:
-            output[stage["name"]] = {"status": "missing_date_coverage", "days_observed": 0}
+            output[stage["name"]] = {"status": "missing_date_coverage", "days_expected_available": expected, "days_observed": 0, "missing_days": expected, "coverage_fraction": 0}
     return {"source_class": "reanalysis", "status": "available" if any_rows else "missing_date_coverage",
             "dataset": "Open-Meteo ERA5 daily Pune grid fixture", "version": "ERA5-2015-retained-full-archive",
+            "source_id": "open-meteo-pune-historical-era5-2015",
+            "sha256": "5B1CBCFC830C3FBDD67C53A76AB7E220A88C23D56177DF10B7AED1C40E495F9E",
             "geography": "Pune grid cell; not farm observation", "timezone": "Asia/Kolkata",
-            "as_of_cutoff": as_of.isoformat(), "future_observations_excluded": True, "stages": output}
+            "as_of_cutoff": as_of.isoformat(), "availability_lag_days": WEATHER_AVAILABILITY_LAG_DAYS,
+            "latest_admissible_observation_date": available_through.isoformat(),
+            "future_observations_excluded": True, "stages": output}
+
+
+def _stage_response_features(stages: list[dict], reanalysis: dict, *, crop: str,
+                             heat_stage: str | None, heat_days: int, rainfall_change_pct: float,
+                             irrigation_fraction: float) -> dict:
+    """Create an explicitly illustrative response from available weather and scenario inputs."""
+    result, total_loss = {}, D("0")
+    observed_stage_data = reanalysis.get("stages", {})
+    for stage in stages:
+        name = stage["name"]
+        sensitivity = D(SENSITIVITY[crop][name])
+        evidence = observed_stage_data.get(name, {})
+        observed_complete = evidence.get("status") == "available" and evidence.get("days_observed", 0) > 0
+        observed_heat = D(str(evidence.get("tmax_ge_threshold_days", 0))) if observed_complete else D("0")
+        observed_days = D(str(evidence.get("days_observed", 0))) if observed_complete else D("0")
+        observed_rain = D(str(evidence.get("precipitation_total_mm", 0))) if observed_complete else D("0")
+        reference_rain = D(str(ILLUSTRATIVE_RAIN_REFERENCE_MM_PER_DAY)) * observed_days
+        historical_water_deficit = max(D("0"), (reference_rain - observed_rain) / reference_rain) if reference_rain else D("0")
+        scenario_heat = D(heat_days if name == heat_stage else 0)
+        scenario_rain_deficit = D(str(max(0.0, -rainfall_change_pct) / 100))
+        heat_component = (observed_heat + scenario_heat) * D("0.012") * sensitivity
+        historical_water_component = historical_water_deficit * D("0.22") * (1 - D(str(irrigation_fraction))) * sensitivity
+        scenario_water_component = scenario_rain_deficit * D("0.22") * (1 - D(str(irrigation_fraction))) * sensitivity
+        stress = min(D("1"), heat_component + historical_water_component + scenario_water_component)
+        total_loss += stress
+        if stage["calendar_status"] == "unavailable_short_season":
+            status = "unavailable_short_season"
+        elif observed_complete and (heat_days or rainfall_change_pct):
+            status = "reanalysis_plus_hypothetical"
+        elif observed_complete:
+            status = "historical_reanalysis"
+        elif heat_days or rainfall_change_pct:
+            status = "hypothetical_fallback"
+        else:
+            status = "missing_weather_zero_response_fallback"
+        result[name] = {
+            "stress_index": round(float(stress), 4), "status": status,
+            "source_class": ("reanalysis_and_hypothetical" if observed_complete and (heat_days or rainfall_change_pct)
+                             else "reanalysis" if observed_complete else "hypothetical_scenario" if heat_days or rainfall_change_pct else "missing"),
+            "weather_evidence_id": reanalysis.get("source_id") if observed_complete else None,
+            "weather_days": int(observed_days), "observed_heat_days_ge_35c": int(observed_heat),
+            "historical_rain_deficit_fraction": round(float(historical_water_deficit), 4) if observed_complete else None,
+            "hypothetical_heat_days": int(scenario_heat),
+            "hypothetical_rainfall_change_pct": rainfall_change_pct,
+            "irrigation_mitigation_fraction": irrigation_fraction,
+            "assumptions": {"heat_yield_loss_per_day": 0.012,
+                "illustrative_reference_rain_mm_per_day": ILLUSTRATIVE_RAIN_REFERENCE_MM_PER_DAY,
+                "water_stress_weight": 0.22, "stage_sensitivity": float(sensitivity)},
+        }
+    return {"stages": result, "combined_loss_fraction": min(D("0.45"), total_loss),
+            "rule_version": "stage-response-v4", "source_class": "illustrative_rule",
+            "status": "illustrative_not_trained_or_calibrated",
+            "limitations": ["Crop calendar and response coefficients are illustrative, not region-calibrated.",
+                "ERA5 is a roughly 25 km grid reanalysis, not farm weather.",
+                "Missing or partial weather is not treated as an observed zero.",
+                "Rainfall reference and response weights are explicit demonstration assumptions."]}
 
 
 def money(value) -> Decimal:
@@ -233,18 +340,28 @@ def _assessment(b: dict, req: ScenarioRequest, *, shock: bool, action: str = "no
     irrigation = o.irrigation_fraction if shock and o.irrigation_fraction is not None else b["irrigation_fraction"]
     stages = _calendar(b)
     stage_by_name = {row["name"]: row for row in stages}
-    if stage_by_name[stage]["calendar_status"] == "outside_declared_season":
-        raise ValueError(f"The {stage} stage window falls outside the declared crop season")
-    event_start = o.heatwave_start_date if shock and o.heatwave_start_date else date.fromisoformat(stage_by_name[stage]["start_date"]) + timedelta(days=max(0, (date.fromisoformat(stage_by_name[stage]["end_date"]) - date.fromisoformat(stage_by_name[stage]["start_date"])).days - max(heat - 1, 0)) // 2)
+    selected_window = stage_by_name[stage]
+    if selected_window["calendar_status"] == "unavailable_short_season":
+        if heat:
+            raise ValueError(f"The {stage} stage is unavailable because the season is too short to define all five stages")
+        stage = next(row["name"] for row in stages if row["start_date"])
+        selected_window = stage_by_name[stage]
+    event_start = o.heatwave_start_date if shock and o.heatwave_start_date else (
+        date.fromisoformat(selected_window["start_date"]) +
+        timedelta(days=max(0, (date.fromisoformat(selected_window["end_date"]) -
+                               date.fromisoformat(selected_window["start_date"])).days - max(heat - 1, 0)) // 2))
     if heat:
-        matched = next((row for row in stages if date.fromisoformat(row["start_date"]) <= event_start <= date.fromisoformat(row["end_date"])), None)
+        matched = next((row for row in stages if row["start_date"] and
+                        date.fromisoformat(row["start_date"]) <= event_start <= date.fromisoformat(row["end_date"])), None)
         if matched is None or date.fromisoformat(matched["end_date"]) < event_start + timedelta(days=heat - 1):
             raise ValueError("Hypothetical heat event must fit inside one declared stage window and crop season")
         stage = matched["name"]
-    sensitivity = D(SENSITIVITY[b["crop"]][stage])
-    heat_loss = min(D("0.45"), D(heat) * D("0.012")) * sensitivity
-    rain_factor = max(D("0.72"), 1 + D(str(rain)) / 100 * D("0.22") * (1 - D(str(irrigation))))
-    yield_value = (b["yield_t_per_ha"] * (1 - heat_loss) * rain_factor).quantize(D("0.0001"))
+    reanalysis = _daily_reanalysis(b, stages, req.as_of)
+    response = _stage_response_features(stages, reanalysis, crop=b["crop"],
+        heat_stage=stage if shock else None, heat_days=heat if shock else 0,
+        rainfall_change_pct=rain if shock else 0, irrigation_fraction=float(irrigation))
+    stress_features = {name: response["stages"][name]["stress_index"] for name in STAGE_NAMES}
+    yield_value = (b["yield_t_per_ha"] * (1 - response["combined_loss_fraction"])).quantize(D("0.0001"))
     production = yield_value * D(str(b["area_ha"]))
     price = money(b["price_inr_per_quintal"] * (1 + D(str(price_delta)) / 100))
     revenue = money(production * 10 * price * b["sale_fraction"])
@@ -259,13 +376,10 @@ def _assessment(b: dict, req: ScenarioRequest, *, shock: bool, action: str = "no
         path = build_dated_ledger(b, path_revenue, sale_date, schedule, money(o.assumed_informal_bridge_inr if shock else 0))
         shortfalls += int(any(p["cash_gap_inr"] > 0 for p in path["payments"]))
         repaid += int(path["formal_balance_end_inr"] == 0)
-    selected_stage = stage_by_name[stage]
-    stress_features = {name: round(min(1.0, float(D(heat) / 20 * D(SENSITIVITY[b["crop"]][name]) if name == stage else D("0")) + max(0, -rain) / 100 * (1 - float(irrigation)) * .25), 4) for name in STAGE_WINDOWS}
-    reanalysis = _daily_reanalysis(b, stages, req.as_of)
     stage_weather = {}
     for row in stages:
         raw = reanalysis["stages"].get(row["name"], {"status": reanalysis.get("status", "missing"), "days_observed": 0})
-        stage_weather[row["name"]] = {"reanalysis": raw,
+        stage_weather[row["name"]] = {"reanalysis": raw, "response": response["stages"][row["name"]],
             "hypothetical": {"status": "provided" if shock and (heat or rain) else "not_provided",
                 "source_class": "hypothetical_scenario", "heat_event_applies_to_stage": bool(shock and heat and row["name"] == stage),
                 "heat_event_start_date": event_start.isoformat() if shock and heat and row["name"] == stage else None,
@@ -280,7 +394,7 @@ def _assessment(b: dict, req: ScenarioRequest, *, shock: bool, action: str = "no
         "crop": {"name": b["crop"], "area_ha": b["area_ha"], "season_start": b["sowing_date"], "season_end": b["harvest_date"], "status": "synthetic_borrower_assumption"},
         "irrigation": {"fraction": irrigation, "unit": "fraction of area", "status": "synthetic_borrower_input"},
         "yield_history": {"baseline_t_per_ha": b["yield_t_per_ha"], "projected_t_per_ha": yield_value, "unit": "t/ha", "status": "assumed_illustrative_response", "historical_observations": None,
-            "source_class": "illustrative_rule", "rule_version": "stage-response-v3", "limitations": ["No aligned observed yield rows are admitted; response is not trained or calibrated.", "Historical weather features do not train or calibrate this response rule."]},
+            "source_class": "illustrative_rule", "rule_version": response["rule_version"], "limitations": response["limitations"]},
         "market_price": {"inr_per_quintal": price, "unit": "INR/quintal", "status": "assumed_demo_input", "observed_at": None},
         "credit_history": {"events": b["credit_history"], "status": "synthetic_demo_records", "observed_bank_data": False},
     }
@@ -288,9 +402,9 @@ def _assessment(b: dict, req: ScenarioRequest, *, shock: bool, action: str = "no
             "gross_revenue_inr": revenue, "sale_date": sale_date.isoformat(), "due_date": schedule[0]["date"].isoformat(),
             "contractual_due_inr": original_due, "loan_schedule": schedule, "action_cost_inr": cost, "action_id": action,
             "stage_stress": stress_features, "stage_weather_features": stage_weather, "crop_stages": stages,
-            "crop_calendar": {**CALENDAR_PROVENANCE, "crop": b["crop"], "declared_geography": b["district"], "sowing_date": b["sowing_date"], "harvest_date": b["harvest_date"], "season_days": (b["harvest_date"]-b["sowing_date"]).days, "ordered": True, "overlap_policy": "flagged"},
+            "crop_calendar": {**CALENDAR_PROVENANCE, "crop": b["crop"], "declared_geography": b["district"], "sowing_date": b["sowing_date"], "harvest_date": b["harvest_date"], "season_days": (b["harvest_date"]-b["sowing_date"]).days + 1, "ordered": True, "overlap_policy": "none; season-relative partition", "short_season_policy": "leave stages without a day unavailable"},
             "reanalysis": reanalysis,
-            "yield_projection": {"value": yield_value, "unit": "t/ha", "source_class": "illustrative_rule", "version": "stage-response-v3", "status": "illustrative_not_trained_or_calibrated", "limitations": ["No real aligned yield observations admitted", "Assumed response coefficients are not region calibrated"]},
+            "yield_projection": {"value": yield_value, "unit": "t/ha", "source_class": "illustrative_rule", "version": response["rule_version"], "status": response["status"], "limitations": response["limitations"], "combined_loss_fraction": response["combined_loss_fraction"]},
             "heat_event": {"stage": stage, "start_date": event_start.isoformat() if heat else None,
                            "end_date": (event_start + timedelta(days=heat - 1)).isoformat() if heat else None, "duration_days": heat,
                            "source_class": "hypothetical_scenario" if heat else "none"},

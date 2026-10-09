@@ -1,5 +1,5 @@
 G9 launcher smoke — 2026-10-09
 
-Command: ./scripts/Start-PhenoCreditDemo.ps1 -ApiPort 8001 -WebPort 5174
+Command: ./scripts/Start-SageDemo.ps1 -ApiPort 8001 -WebPort 5174
 Result: both loopback services started; API /health returned OK; the fresh Vite UI loaded seeded borrowers and submitted POST /api/scenarios/evaluate to the matching port-8001 API; the UI reported Demo backend connected.
-Cleanup: ./scripts/Stop-PhenoCreditDemo.ps1 stopped the recorded API and Vite process IDs. The normal 8000/5173 demo was not interrupted.
+Cleanup: ./scripts/Stop-SageDemo.ps1 stopped the recorded API and Vite process IDs. The normal 8000/5173 demo was not interrupted.

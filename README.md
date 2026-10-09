@@ -48,3 +48,12 @@ G0–G9 demo/rehearsal work has runtime evidence. G8 loopback-only smoke and bro
 From `backend`, install `python -m pip install -r requirements-dev.txt`, then run `python -m unittest app.tests.test_gates -v`. With the API running, execute `python verify_live.py` and `python verify_offline.py`; the latter repeats the local acceptance smoke twice and writes run evidence. From `frontend`, run `npm ci` and `npm run build`.
 
 On this machine the `py` launcher has no installed Python. Verification used bundled Python 3.12.14 at `C:\Users\Aaryan\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe`, installing dependencies with `-m pip install --target .packages -r requirements-dev.txt` from `backend`. Set `$env:PYTHONPATH=(Join-Path $PWD '.packages')` before invoking that executable for tests or Uvicorn. A normal Python virtual environment is preferred for other machines.
+
+
+## Integration and demo sign-in
+
+`main` is the integration target. Pull requests against `main` and `master` run backend regression tests and the frontend production build through GitHub Actions. Merge only after both jobs pass and review any required browser checks.
+
+The sign-in added by PR #20 is for synthetic demonstration accounts. Passwords and OTPs are publicly disclosed for testing; OTP generation displays the code on screen and does not deliver SMS. Business demo endpoints remain public, and role labels do not enforce production borrower isolation or institutional authorization. Do not use real borrower data with this prototype. Production access controls remain separate future work.
+
+Runtime SQLite databases are ignored and generated on startup. Tests use fresh temporary databases, including authentication initialization, invalid inputs, OTP replay/expiry, inactive users, and the existing financial/calendar regressions.

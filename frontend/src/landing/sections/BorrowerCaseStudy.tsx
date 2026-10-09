@@ -24,7 +24,7 @@ export function BorrowerCaseStudy({ onNavigate }: BorrowerCaseStudyProps) {
           tag="END-TO-END DEMONSTRATION"
           title="Synthetic Borrower Walkthrough: Overcoming a Due-Date Shock"
           subtitle="Follow a step-by-step scenario demonstrating how a temporary climate-linked cash delay is identified and restructured before bank delinquency occurs."
-          badge={<DemoDataBadge type="synthetic" text="Synthetic Borrower B-DEMO-001" />}
+          badge={<DemoDataBadge type="synthetic" text="Illustrative example - separate from backend records" />}
         />
 
         <div className="case-study-card">
@@ -32,7 +32,7 @@ export function BorrowerCaseStudy({ onNavigate }: BorrowerCaseStudyProps) {
           <div className="case-profile-bar">
             <div className="case-profile-item">
               <span className="case-label">BORROWER</span>
-              <b>Demo Farmer 001 (B-DEMO-001)</b>
+              <b>Illustrative example farmer</b>
               <small>Nashik Rural · Maharashtra</small>
             </div>
             <div className="case-profile-item">
@@ -116,7 +116,7 @@ export function BorrowerCaseStudy({ onNavigate }: BorrowerCaseStudyProps) {
           {/* Footer Action Bar */}
           <div className="case-footer-bar">
             <div className="case-footer-text">
-              <b>Inspect this exact borrower scenario inside the live app</b>
+              <b>Explore the backend borrower walkthrough; figures above are a separate illustrative example</b>
               <p>Load the pre-configured walkthrough into the Scenario Lab.</p>
             </div>
             <button className="case-action-btn" onClick={() => onNavigate('scenarios')}>

@@ -11,7 +11,7 @@ from fastapi.testclient import TestClient
 from app.main import app
 from app.db import _connect, get_borrower_record, get_scenario, save_scenario
 from app.schemas import ScenarioBundle, ScenarioRequest
-from app.services.assessment import BORROWERS, _daily_reanalysis, _calendar, build_dated_ledger, build_canonical_ledger, evaluate_scenario, money
+from app.services.assessment import BORROWERS, _daily_reanalysis, _calendar, _assessment, build_dated_ledger, build_canonical_ledger, evaluate_scenario, money
 
 
 class GateVerification(unittest.TestCase):
@@ -102,7 +102,33 @@ class GateVerification(unittest.TestCase):
         self.assertEqual(weather['source_class'], 'reanalysis')
         self.assertEqual(weather['timezone'], 'Asia/Kolkata')
         self.assertTrue(weather['future_observations_excluded'])
-        self.assertTrue(all(not x.get('date_end') or x['date_end'] <= date(2015, 8, 1) for x in weather['stages'].values()))
+        self.assertEqual(weather['availability_lag_days'], 5)
+        self.assertTrue(all(not x.get('date_end') or x['date_end'] <= date(2015, 7, 27).isoformat() for x in weather['stages'].values()))
+
+    def test_observed_reanalysis_changes_stage_response_and_yield(self):
+        b = dict(BORROWERS['B-DEMO-002'])
+        b['sowing_date'], b['harvest_date'] = date(2015, 6, 1), date(2015, 10, 31)
+        request = ScenarioRequest(as_of=date(2015, 12, 1))
+        original = _assessment(b, request, shock=False)
+        shifted = dict(b, sowing_date=date(2015, 6, 11))
+        moved = _assessment(shifted, request, shock=False)
+        self.assertEqual(original['reanalysis']['status'], 'available')
+        self.assertNotEqual(original['stage_weather_features'], moved['stage_weather_features'])
+        self.assertNotEqual(original['stage_stress'], moved['stage_stress'])
+        self.assertNotEqual(original['yield_t_per_ha'], moved['yield_t_per_ha'])
+        self.assertEqual(original['yield_projection']['source_class'], 'illustrative_rule')
+        self.assertIn('not_trained_or_calibrated', original['yield_projection']['status'])
+
+    def test_short_season_stages_are_unavailable_instead_of_overlapping(self):
+        b = dict(BORROWERS['B-DEMO-002'])
+        b['sowing_date'], b['harvest_date'] = date(2026, 6, 1), date(2026, 6, 3)
+        stages = _calendar(b)
+        active = [row for row in stages if row['start_date']]
+        self.assertEqual(len(active), 3)
+        self.assertEqual(len({row['start_date'] for row in active}), 3)
+        self.assertEqual([row['name'] for row in stages if not row['start_date']], ['grain_fill', 'harvest'])
+        weather = _daily_reanalysis(b, stages, date(2026, 6, 30))
+        self.assertEqual(weather['stages']['grain_fill']['status'], 'unavailable_short_season')
 
     def test_api_baseline_and_calendar_date_shift_are_reproducible(self):
         base = {'as_of':'2026-10-09','overrides':{'heatwave_days':4,'heatwave_growth_stage':'flowering'}}
