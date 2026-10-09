@@ -21,13 +21,19 @@ from app.auth.service import (
     verify_otp,
     verify_password,
 )
+from app.db import revoke_auth_session
+from app.config import APP_MODE
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 router = APIRouter(prefix="/api/auth", tags=["Authentication"])
+bearer = HTTPBearer(auto_error=False)
 
 
 @router.post("/register", response_model=TokenResponse)
 def register(req: UserRegisterRequest):
-    """Register a new user account (Bank Officer, Insurance Agent, or Farmer)."""
+    """Self registration is limited to unlinked farmer accounts."""
+    if req.role != "farmer" or req.linked_borrower_id:
+        raise HTTPException(status_code=403, detail="Institutional roles and borrower links require administrator provisioning.")
     if req.role in ("bank_officer", "insurance_agent"):
         if not req.email or not req.password:
             raise HTTPException(
@@ -138,6 +144,9 @@ def send_otp(req: OTPSendRequest):
 
     session_id, raw_otp, expires_in_sec = create_otp_session(phone)
 
+    if APP_MODE == "hosted":
+        return OTPSendResponse(status="success", message="If the number is enrolled, a code will be delivered.",
+                               phone=phone, otp="", expires_in_seconds=expires_in_sec)
     return OTPSendResponse(
         status="success",
         message=f"OTP generated for +91 {phone[-10:]}. Use the code shown on screen.",
@@ -164,8 +173,8 @@ def verify_farmer_otp(req: OTPVerifyRequest):
         # First time farmer login -> auto register
         farmer_name = req.name or f"Farmer (+91 {phone[-4:]})"
         # If demo phone matches known records, link automatically
-        linked_id = req.linked_borrower_id
-        if not linked_id:
+        linked_id = None
+        if APP_MODE == "demo":
             if phone == "9876543210":
                 linked_id = "B-DEMO-001"
             elif phone == "9876543211":
@@ -218,6 +227,8 @@ def get_current_user_profile(current_user: dict = Depends(get_current_user)):
 @router.get("/demo-accounts", response_model=List[DemoAccount])
 def list_demo_accounts():
     """Return list of quick-access demo credentials for seamless presentation."""
+    if APP_MODE == "hosted":
+        raise HTTPException(status_code=404, detail="Not found")
     return [
         DemoAccount(
             role="bank_officer",
@@ -254,6 +265,17 @@ def list_demo_accounts():
             description="Mobile OTP access for loan schedule & climate risk score",
         ),
     ]
+
+
+@router.post("/logout", status_code=204)
+def logout(credentials: HTTPAuthorizationCredentials | None = Depends(bearer)):
+    if credentials and credentials.credentials:
+        from app.auth.service import decode_access_token
+        try:
+            revoke_auth_session(decode_access_token(credentials.credentials).get("jti", ""))
+        except ValueError:
+            pass
+    return None
 
 
 

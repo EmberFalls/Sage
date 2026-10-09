@@ -1,7 +1,7 @@
 from typing import Literal, Optional
 from pydantic import BaseModel, Field, field_validator
 
-UserRole = Literal["bank_officer", "insurance_agent", "farmer"]
+UserRole = Literal["bank_officer", "branch_lead", "insurance_agent", "farmer", "admin"]
 
 
 class UserProfile(BaseModel):
@@ -11,6 +11,7 @@ class UserProfile(BaseModel):
     email: Optional[str] = None
     phone: Optional[str] = None
     linked_borrower_id: Optional[str] = None
+    branch_id: Optional[str] = None
     is_active: bool = True
     created_at: str
 

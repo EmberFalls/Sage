@@ -65,13 +65,21 @@ class AuthVerification(unittest.TestCase):
         for phone in ['abcdefghij','123','１２３４５６７８９０']:
             self.assertEqual(self.client.post('/api/auth/otp/send',json={'phone':phone}).status_code,422)
         request={'role':'bank_officer','name':'Test User','email':' OFFICER@BANK.DEMO ','password':'password123'}
-        self.assertEqual(self.client.post('/api/auth/register',json=request).status_code,400)
+        self.assertEqual(self.client.post('/api/auth/register',json=request).status_code,403)
         request['email']='other@example.com'
         request['password']='é'*40
+        request={'role':'farmer','name':'Test User','phone':'1234563210','password':'é'*40}
         self.assertEqual(self.client.post('/api/auth/register',json=request).status_code,422)
         request['password']='password123'
         request['name']='   '
         self.assertEqual(self.client.post('/api/auth/register',json=request).status_code,422)
+
+    def test_farmer_cannot_choose_a_borrower_link(self):
+        response = self.client.post('/api/auth/register', json={
+            'role':'farmer', 'name':'Farmer One', 'phone':'1234563210',
+            'linked_borrower_id':'B-DEMO-002'
+        })
+        self.assertEqual(response.status_code, 403)
 
     def test_partial_seed_repairs_only_missing_accounts(self):
         with _connect() as con:

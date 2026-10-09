@@ -2,13 +2,18 @@ from contextlib import asynccontextmanager
 from datetime import date, datetime, timezone
 from decimal import Decimal
 from uuid import uuid4
-from fastapi import FastAPI, HTTPException, Query
+import os
+from fastapi import FastAPI, HTTPException, Query, Depends
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.requests import Request
+from starlette.responses import JSONResponse
 
-from app.config import PRODUCT_NAME
+from app.config import PRODUCT_NAME, APP_MODE
 from app.auth.service import seed_demo_users
 from app.auth.router import router as auth_router
-from app.db import (append_loan_event, create_application, get_application, get_borrower_record,
+from app.auth.farmer import router as farmer_router
+from app.auth.dependencies import require_roles, get_optional_current_user
+from app.db import (add_audit_event, append_loan_event, create_application, get_application, get_borrower_record,
                    create_intervention_proposal, get_intervention_proposal, get_loan_record, get_scenario, get_comparison_bundle, list_comparison_bundles, get_source_snapshot, list_applications, list_borrower_records, list_intervention_proposals, list_loan_records,
                    list_scenarios, list_source_records, get_warning_evidence, get_warning_task, ensure_warning_task, transition_warning_task,
                    list_allocation_snapshots, get_allocation_snapshot, save_allocation_snapshot,
@@ -31,20 +36,38 @@ from app.services.satellite_ndvi import get_satellite_ndvi_telemetry
 
 @asynccontextmanager
 async def lifespan(app):
-    seed_demo_records(BORROWERS, SOURCE_FIXTURES)
-    seed_demo_users()
+    if APP_MODE == "demo":
+        seed_demo_records(BORROWERS, SOURCE_FIXTURES)
+        seed_demo_users()
     yield
 
 
 app = FastAPI(title=PRODUCT_NAME, version="0.2.0", description="Offline synthetic agricultural credit scenario demo", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
+    allow_origins=(os.getenv("CORS_ALLOWED_ORIGINS", "").split(",") if APP_MODE == "hosted" else ["*"]),
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 app.include_router(auth_router)
+app.include_router(farmer_router)
+
+
+@app.middleware("http")
+async def hosted_route_gate(request: Request, call_next):
+    # Legacy portfolio routes are intentionally demo-only until branch scope
+    # filters and hosted identity provisioning are available on every query.
+    path = request.url.path
+    if APP_MODE == "hosted" and path.startswith("/api/") and not path.startswith(("/api/auth/", "/api/private/", "/api/sources", "/api/source-", "/api/data-sources")):
+        return JSONResponse({"detail": "Not found"}, status_code=404)
+    return await call_next(request)
+
+
+def source_administration_access(current_user: dict | None = Depends(get_optional_current_user)):
+    if APP_MODE == "hosted" and (not current_user or current_user.get("role") != "admin"):
+        raise HTTPException(403, "Administrator access required")
+    return current_user
 
 SOURCE_FIXTURES = [
     {"id": "demo-finance", "type": "synthetic", "label": "Synthetic demo borrower and loan ledger", "status": "simulated", "version": SOURCE_VERSION, "verified_bytes": False},
@@ -58,6 +81,8 @@ SOURCE_FIXTURES = [
 
 @app.post("/api/demo/seed")
 def initialize_demo_database():
+    if APP_MODE != "demo":
+        raise HTTPException(404, "Not found")
     seed_demo_records(BORROWERS, SOURCE_FIXTURES)
     return {"status": "seeded", "borrower_count": len(list_borrower_records()), "source_version": SOURCE_VERSION}
 
@@ -575,22 +600,23 @@ def allocation_detail(allocation_id: str):
 
 
 @app.get("/api/sources")
-def sources():
+def sources(current_user: dict | None = Depends(source_administration_access)):
     return {"sources": list_source_records()}
 
 
 @app.get("/api/source-snapshots")
-def source_snapshots(source_id: str | None = None):
+def source_snapshots(source_id: str | None = None, current_user: dict | None = Depends(source_administration_access)):
     return {"snapshots": list_source_snapshots(source_id)}
 
 
 @app.get("/api/source-refreshes")
-def source_refreshes(source_id: str | None = None, limit: int = Query(default=50, ge=1, le=200)):
+def source_refreshes(source_id: str | None = None, limit: int = Query(default=50, ge=1, le=200),
+                     current_user: dict | None = Depends(source_administration_access)):
     return {"refreshes": list_source_refresh_events(source_id, limit)}
 
 
 @app.get("/api/source-snapshots/{snapshot_id}/content")
-def source_snapshot_content(snapshot_id: str):
+def source_snapshot_content(snapshot_id: str, current_user: dict | None = Depends(source_administration_access)):
     record = get_source_snapshot(snapshot_id)
     if record is None:
         raise HTTPException(404, "Source snapshot not found")
@@ -599,22 +625,30 @@ def source_snapshot_content(snapshot_id: str):
 
 
 @app.get("/api/data-sources")
-def data_sources():
+def data_sources(current_user: dict | None = Depends(source_administration_access)):
     return list_data_sources()
 
 
 @app.post("/api/data-sources/open-meteo/refresh")
-def refresh_open_meteo():
+def refresh_open_meteo(current_user: dict = Depends(require_roles("admin"))):
     try:
-        return refresh_pune_historical_weather()
+        result = refresh_pune_historical_weather()
+        add_audit_event(actor_id=current_user["id"], actor_role=current_user["role"], entity_type="data_source",
+                        entity_id="open-meteo", action="refresh", reason="Administrator refreshed a source snapshot",
+                        result_ref=result.get("snapshot_id") if isinstance(result, dict) else None)
+        return result
     except (OSError, ValueError, RuntimeError) as exc:
         raise HTTPException(502, f"Source refresh failed and no verified fallback is available: {exc}") from exc
 
 
 @app.post("/api/data-sources/import", status_code=201)
-def import_feature_snapshot(payload: FeatureSnapshotImport):
+def import_feature_snapshot(payload: FeatureSnapshotImport, current_user: dict = Depends(require_roles("admin"))):
     try:
-        return freeze_feature_import(payload)
+        result = freeze_feature_import(payload)
+        add_audit_event(actor_id=current_user["id"], actor_role=current_user["role"], entity_type="data_source",
+                        entity_id=payload.source_id, action="import", reason="Administrator imported a source snapshot",
+                        result_ref=result.get("snapshot_id") if isinstance(result, dict) else None)
+        return result
     except ValueError as exc:
         raise HTTPException(422, str(exc)) from exc
 
