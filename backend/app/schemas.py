@@ -1,6 +1,6 @@
 from datetime import date
 from decimal import Decimal
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -20,7 +20,7 @@ class ScenarioRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
     borrower_id: str = "B-DEMO-001"
     as_of: date = date(2026, 10, 9)
-    loan_principal_override_inr: Decimal | None = Field(default=None, gt=0, le=Decimal("100000000"))
+    loan_principal_override_inr: Annotated[Decimal, Field(gt=0, le=Decimal("100000000"))] | None = None
     overrides: Overrides = Field(default_factory=Overrides)
     action_id: Literal["reschedule_30d", "split_payment", "none"] = "none"
 
@@ -53,6 +53,10 @@ class ScenarioBundle(BaseModel):
     warnings: list[str]
     snapshot_freshness: Literal["current", "stale"] | None = None
     snapshot_stale_reasons: list[str] = Field(default_factory=list)
+    cash_ledger: dict[str, Any] | None = None
+    credit_history_summary: dict[str, Any] | None = None
+    feasibility_detail: dict[str, Any] | None = None
+    f5_ledger_version: str | None = None
 
 
 class BorrowerCreate(BaseModel):
@@ -102,10 +106,19 @@ class ApplicationStatusUpdate(BaseModel):
 class LedgerEventCreate(BaseModel):
     model_config = ConfigDict(extra="forbid", allow_inf_nan=False)
     date: date
-    kind: Literal["repayment", "fee", "adjustment"]
+    kind: Literal["repayment", "fee", "adjustment", "reversal"]
     amount_inr: Decimal = Field(gt=0, le=Decimal("100000000"))
     note: str = Field(default="", max_length=500)
     event_id: str | None = Field(default=None, min_length=8, max_length=100)
+    reversal_of_event_id: str | None = Field(default=None, min_length=8, max_length=100)
+
+    @model_validator(mode="after")
+    def validate_reversal_reference(self):
+        if self.kind == "reversal" and not self.reversal_of_event_id:
+            raise ValueError("A reversal must reference the original ledger event")
+        if self.kind != "reversal" and self.reversal_of_event_id:
+            raise ValueError("Only reversal events may reference an original ledger event")
+        return self
 
 
 class FeatureSnapshotImport(BaseModel):
