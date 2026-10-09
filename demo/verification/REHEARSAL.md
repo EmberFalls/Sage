@@ -7,10 +7,10 @@ Use the exact input values below if you want the saved evidence numbers to match
 From the repository root, start both loopback services with one command after installing the pinned dependencies shown in `README.md`:
 
 ```powershell
-./scripts/Start-PhenoCreditDemo.ps1
+./scripts/Start-SageDemo.ps1
 ```
 
-The app seeds its two synthetic borrowers on API startup. To reseed them without restarting the services, run `./scripts/Reset-PhenoCreditDemo.ps1`. To stop only processes started by the launcher, run `./scripts/Stop-PhenoCreditDemo.ps1`. Logs and owned process IDs are written under ignored `demo/run/`.
+The app seeds its two synthetic borrowers on API startup. To reseed them without restarting the services, run `./scripts/Reset-SageDemo.ps1`. To stop only processes started by the launcher, run `./scripts/Stop-SageDemo.ps1`. Logs and owned process IDs are written under ignored `demo/run/`.
 
 Terminal 1, from `backend`:
 

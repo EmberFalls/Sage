@@ -7,7 +7,7 @@ from urllib.request import Request, urlopen
 
 from app.schemas import ScenarioBundle
 
-API = os.environ.get("PHENOCREDIT_API_URL", "http://127.0.0.1:8000").rstrip("/")
+API = os.environ.get("SAGE_API_URL", "http://127.0.0.1:8000").rstrip("/")
 if urlparse(API).hostname not in {"127.0.0.1", "localhost", "::1"}:
     raise SystemExit("Offline verification only permits a loopback API URL.")
 OUT = Path(__file__).resolve().parents[1] / "demo" / "verification"

@@ -27,7 +27,7 @@ export function TrustSection() {
     {
       icon: <UserCheck size={18} className="text-blue-600" />,
       title: 'Human-in-the-Loop Governance',
-      desc: 'PhenoCredit outputs are decision-support estimates. The system does not automate credit approvals, loan rejections, or binding contract modifications.',
+      desc: 'Sage outputs are decision-support estimates. The system does not automate credit approvals, loan rejections, or binding contract modifications.',
     },
     {
       icon: <Server size={18} className="text-purple-600" />,

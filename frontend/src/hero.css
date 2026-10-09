@@ -1,15 +1,13 @@
 /* =========================================================================
-   PhenoCredit — Editorial Hero Section Styling
+   Sage — Editorial Hero Section Styling
    Centered Apple-Style Glassmorphic Island + Cool Fintech Typography + Bounce Animations
    ========================================================================= */
 
-@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
-
 :root {
   --hero-font-serif: 'Instrument Serif', Georgia, serif;
-  --hero-font-display: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
-  --hero-font-mono: 'Space Grotesk', 'Plus Jakarta Sans', monospace;
-  --hero-font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
+  --hero-font-display: 'Plus Jakarta Sans', 'Segoe UI', Arial, sans-serif;
+  --hero-font-mono: 'Space Grotesk', 'Plus Jakarta Sans', 'Segoe UI', Arial, sans-serif;
+  --hero-font-body: 'Inter', 'Segoe UI', Arial, sans-serif;
 
   --hero-lime: #d8ff36;
   --hero-lime-glow: rgba(216, 255, 54, 0.45);

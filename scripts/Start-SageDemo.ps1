@@ -34,11 +34,16 @@ function Test-HttpOk([string]$Url) {
 }
 
 if (-not (Test-HttpOk "http://127.0.0.1:$ApiPort/health")) {
-    $python = Join-Path $backend '.venv/Scripts/python.exe'
+    $python = Join-Path $backend '.venv-runtime/Scripts/python.exe'
+    if (-not (Test-Path -LiteralPath $python)) { $python = Join-Path $backend '.venv/Scripts/python.exe' }
     if (-not (Test-Path -LiteralPath $python)) {
         $pythonCommand = Get-Command python.exe -ErrorAction SilentlyContinue
         if (-not $pythonCommand) { throw 'Python 3.10+ was not found. Create backend/.venv and install backend/requirements.txt.' }
         $python = $pythonCommand.Source
+    }
+    $packages = Join-Path $backend '.packages'
+    if (Test-Path -LiteralPath $packages) {
+        $env:PYTHONPATH = if ([string]::IsNullOrWhiteSpace($env:PYTHONPATH)) { $packages } else { "$packages$([IO.Path]::PathSeparator)$env:PYTHONPATH" }
     }
     & $python -c 'import fastapi, uvicorn' 2>$null
     if ($LASTEXITCODE -ne 0) { throw 'Backend dependencies are missing. Run: python -m pip install -r backend/requirements.txt' }
@@ -65,9 +70,16 @@ if (-not (Test-HttpOk "http://127.0.0.1:$ApiPort/health")) { throw "API did not 
 if (-not (Test-HttpOk "http://127.0.0.1:$WebPort/")) { throw "Frontend did not start. See $logDir/web-error.log" }
 
 $owned = @()
+if (Test-Path -LiteralPath $pidFile) {
+    try {
+        foreach ($entry in @(Get-Content -LiteralPath $pidFile -Raw | ConvertFrom-Json)) {
+            if (Get-Process -Id $entry.Id -ErrorAction SilentlyContinue) { $owned += $entry }
+        }
+    } catch { $owned = @() }
+}
 if ($api) { $owned += [pscustomobject]@{ Id = $api.Id; Kind = 'api'; Port = $ApiPort } }
 if ($web) { $owned += [pscustomobject]@{ Id = $web.Id; Kind = 'web'; Port = $WebPort } }
 $owned | ConvertTo-Json | Set-Content -LiteralPath $pidFile -Encoding UTF8
-Write-Host "PhenoCredit is ready: http://127.0.0.1:$WebPort/"
+Write-Host "Sage is ready: http://127.0.0.1:$WebPort/"
 Write-Host "API health: http://127.0.0.1:$ApiPort/health"
-Write-Host 'Demo records are seeded automatically. Run scripts/Stop-PhenoCreditDemo.ps1 when finished.'
+Write-Host 'Demo records are seeded automatically. Run scripts/Stop-SageDemo.ps1 when finished.'
