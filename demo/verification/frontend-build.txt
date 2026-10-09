@@ -1,5 +1,5 @@
 
-> phenocredit-demo@0.1.0 build
+> sage-demo@0.1.0 build
 > tsc -b && vite build
 
 vite v6.0.7 building for production...

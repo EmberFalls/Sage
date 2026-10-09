@@ -1,6 +1,7 @@
 # Full-product expansion status — F0 gate, F1–F4 and non-model operations
 
-Updated 2026-10-09. This is an inventory against `PhenoCredit_FULL_Implementation_Plan_V2.md` and its F01–F33 acceptance matrix. The full-plan phase F0 is **PARTIAL**: scope, provenance, baseline and sitemap are documented, but the required matched real-source join has not been achieved. The hackathon implementation and its G0–G9 status remain separately recorded in `IMPLEMENTATION_STATUS.md`.
+Updated 2026-10-09. This is an inventory against `Sage_FULL_Implementation_Plan_V2.md` Phase F0 and its F01–F33 acceptance matrix. The full-plan phase F0 is **PARTIAL**: scope, provenance, baseline and sitemap are documented, but the required matched real-source join has not been achieved. The hackathon implementation and its G0–G9 status remain separately recorded in `IMPLEMENTATION_STATUS.md`.
+
 
 ## F0 gate
 
