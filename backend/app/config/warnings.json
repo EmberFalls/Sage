@@ -1,1 +1,1 @@
-{"version":"warnings-demo-v1","materiality_inr":"1000.00","informal_rate":"0.18","repeated_seasons":2}
+{"version":"f7-debt-warnings-v2","materiality_inr":"1000.00","informal_rate":"0.18","repeated_seasons":2,"currency":"INR","interest_method":"simple_actual_days_365","rule_set":["BRIDGE_USED_FOR_FORMAL_DUE","REPEATED_SHORTFALL","INFORMAL_DEBT_GROWING","FORMAL_PAID_TOTAL_DEBT_RISES","ACTION_SHIFTS_BURDEN"]}

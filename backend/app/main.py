@@ -9,14 +9,21 @@ from app.config import PRODUCT_NAME
 from app.auth.service import seed_demo_users
 from app.auth.router import router as auth_router
 from app.db import (append_loan_event, create_application, get_application, get_borrower_record,
-                   get_loan_record, get_scenario, get_comparison_bundle, get_source_snapshot, list_applications, list_borrower_records, list_loan_records,
-                   list_scenarios, list_source_records,
-                   list_source_refresh_events, list_source_snapshots, save_borrower_record,
-                   save_comparison_bundle, save_scenario, seed_demo_records, update_application,
+                   create_intervention_proposal, get_intervention_proposal, get_loan_record, get_scenario, get_comparison_bundle, list_comparison_bundles, get_source_snapshot, list_applications, list_borrower_records, list_intervention_proposals, list_loan_records,
+                   list_scenarios, list_source_records, get_warning_evidence, get_warning_task, ensure_warning_task, transition_warning_task,
+                   list_allocation_snapshots, get_allocation_snapshot, save_allocation_snapshot,
+                   list_source_refresh_events, list_source_snapshots, list_warning_evidence, save_borrower_record,
+                   save_comparison_bundle, save_scenario, seed_demo_records, transition_intervention_proposal, update_application,
                    update_application_with_demo_loan)
 from app.schemas import (ApplicationCreate, ApplicationStatusUpdate, BorrowerCreate, LedgerEventCreate,
-                         FeatureSnapshotImport, ScenarioBundle, ScenarioRequest)
+                         FeatureSnapshotImport, InterventionEvaluationRequest, InterventionProposalCreate,
+                         InterventionReviewUpdate, ScenarioBundle, ScenarioRequest, AllocationRequest,
+                         WarningWorkflowUpdate)
 from app.services.assessment import BORROWERS, SOURCE_VERSION, STAGE_WINDOWS, evaluate_scenario
+from app.services.interventions import POLICY as INTERVENTION_POLICY, action_catalog, evaluate_action_candidates, score_action_option
+from app.services.allocation import (apply_allocated_candidate, freeze_from_saved_comparisons,
+                                     solve_allocation, stable_allocation_id)
+from app.services.watchlist import page_watchlist
 from app.services.sources import list_data_sources, refresh_pune_historical_weather
 from app.services.feature_ingest import freeze_feature_import
 from app.services.soil_moisture import get_soil_moisture_telemetry
@@ -291,28 +298,129 @@ def scenario(req: ScenarioRequest):
 
 
 @app.post("/api/interventions/evaluate")
-def intervention_candidates(req: ScenarioRequest):
-    no_action = scenario(req.model_copy(update={"action_id": "none"}))
-    candidates = [scenario(req.model_copy(update={"action_id": action_id})) for action_id in ("reschedule_30d", "split_payment")]
-    selected = no_action if req.action_id == "none" else next(row for row in candidates if row["scenario_request"]["action_id"] == req.action_id)
-    context_hash = no_action["comparison_context_hash"]
-    if any(candidate["comparison_context_hash"] != context_hash for candidate in candidates):
-        raise HTTPException(409, "Action results do not share the frozen comparison context")
-    bundle = save_comparison_bundle({
-        "borrower_id": req.borrower_id,
-        "comparison_context_hash": context_hash,
-        "baseline_ref": {"scenario_id": no_action["scenario_id"], "result": "baseline"},
-        "stress_ref": {"scenario_id": no_action["scenario_id"], "result": "stress"},
-        "candidate_refs": [{"action_id": row["scenario_request"]["action_id"], "scenario_id": row["scenario_id"], "result": "stress_with_action"} for row in candidates],
-        "input_hashes": [no_action["input_hash"], *[row["input_hash"] for row in candidates]],
-        "seed": no_action["frozen_context"]["seed"],
-        "climate_path_hash": no_action["frozen_context"]["climate_paths"]["hash"],
-        "idempotency_policy": "sha256 canonical content; duplicate scenario and bundle IDs return the first stored record",
-    })
-    selected["comparison_bundle_id"] = bundle["bundle_id"]
-    for candidate in candidates:
-        candidate["comparison_bundle_id"] = bundle["bundle_id"]
-    return {"selected": selected, "candidates": candidates, **bundle}
+def intervention_candidates(req: InterventionEvaluationRequest):
+    try:
+        base_req = ScenarioRequest.model_validate(req.model_dump(exclude={"action_inputs", "action_id", "action_parameters"}) |
+                                                   {"action_id": "none", "action_parameters": {}})
+        baseline, options = evaluate_action_candidates(req)
+        base_saved = save_scenario(baseline["scenario_id"], req.borrower_id, baseline["input_hash"],
+                                   base_req.model_dump(mode="json"), baseline)
+        evaluated_results: dict[str, dict] = {}
+        ranked: list[dict] = []
+        for option in options:
+            if not option.get("eligible") or not option.get("evaluable"):
+                continue
+            parameters = option.get("action_parameters", {})
+            schedule_action = parameters.get("schedule_action") or "none"
+            candidate_req = base_req.model_copy(update={"action_id": schedule_action, "action_parameters": parameters})
+            result = evaluate_scenario(candidate_req)
+            result = save_scenario(result["scenario_id"], req.borrower_id, result["input_hash"],
+                                   candidate_req.model_dump(mode="json"), result)
+            option = score_action_option(option, baseline, result)
+            option["result_ref"] = {"scenario_id": result["scenario_id"], "result": "stress_with_action"}
+            evaluated_results[option["candidate_id"]] = result
+            if option.get("successful"):
+                ranked.append(option)
+            else:
+                option["status"] = "eligible_unranked"
+                option["not_ranked_reason"] = "No positive net benefit under the declared objective."
+        ranked.sort(key=lambda row: (-float(row["metrics"]["objective_score_inr"]), row["candidate_id"]))
+        for rank, option in enumerate(ranked, start=1):
+            option["rank"] = rank
+            option["selected"] = rank == 1
+        options_by_id = {row["candidate_id"]: row for row in options}
+        options = [options_by_id[row["candidate_id"]] for row in ranked] + [row for row in options if row["candidate_id"] not in {r["candidate_id"] for r in ranked}]
+        context_hash = baseline["comparison_context_hash"]
+        if any(result["comparison_context_hash"] != context_hash for result in evaluated_results.values()):
+            raise HTTPException(409, "Action results do not share the frozen stress inputs and climate paths")
+        legacy_candidates = [evaluated_results[action_id] for action_id in ("reschedule_30d", "split_payment") if action_id in evaluated_results]
+        requested_candidate = req.action_inputs.get("selected_candidate_id")
+        selected_id = requested_candidate if requested_candidate in evaluated_results else req.action_id if req.action_id in evaluated_results else (ranked[0]["candidate_id"] if ranked else None)
+        selected = evaluated_results.get(selected_id, base_saved)
+        bundle = save_comparison_bundle({
+            "borrower_id": req.borrower_id, "comparison_context_hash": context_hash,
+            "baseline_ref": {"scenario_id": base_saved["scenario_id"], "result": "baseline"},
+            "stress_ref": {"scenario_id": base_saved["scenario_id"], "result": "stress"},
+            "candidate_refs": [{"action_id": action_id, "scenario_id": evaluated_results[action_id]["scenario_id"], "result": "stress_with_action"}
+                               for action_id in ("reschedule_30d", "split_payment") if action_id in evaluated_results],
+            "action_options": options,
+            "action_result_refs": {key: value["scenario_id"] for key, value in evaluated_results.items()},
+            "ranked_candidate_ids": [row["candidate_id"] for row in ranked],
+            "objective": INTERVENTION_POLICY["objective"], "policy_version": INTERVENTION_POLICY["version"],
+            "policy_class": INTERVENTION_POLICY["policy_class"], "seed": base_saved["frozen_context"]["seed"],
+            "climate_path_hash": base_saved["frozen_context"]["climate_paths"]["hash"],
+            "idempotency_policy": "SHA-256 of frozen scenario, catalog/policy versions, action options, and result refs; same comparison returns first saved record",
+        })
+        selected["comparison_bundle_id"] = bundle["bundle_id"]
+        for candidate in legacy_candidates:
+            candidate["comparison_bundle_id"] = bundle["bundle_id"]
+        return {"selected": selected, "candidates": legacy_candidates, "candidate_results": evaluated_results,
+                "action_options": options, "ranked_candidate_ids": [row["candidate_id"] for row in ranked],
+                "non_selected_options": [row for row in options if row.get("candidate_id") not in {r["candidate_id"] for r in ranked}],
+                **bundle}
+    except KeyError:
+        raise HTTPException(404, "Select a seeded demo borrower")
+    except ValueError as exc:
+        raise HTTPException(422, str(exc))
+
+
+@app.get("/api/interventions/catalog")
+def intervention_catalog():
+    return action_catalog()
+
+
+@app.post("/api/interventions/proposals", status_code=201)
+def propose_intervention(payload: InterventionProposalCreate):
+    comparison = get_comparison_bundle(payload.comparison_id)
+    if comparison is None:
+        raise HTTPException(404, "Saved intervention comparison not found")
+    candidate = next((row for row in comparison.get("action_options", []) if row.get("candidate_id") == payload.candidate_id), None)
+    if candidate is None:
+        raise HTTPException(404, "Action candidate not found in this comparison")
+    if not candidate.get("evaluable") or not candidate.get("eligible") or not candidate.get("result_ref"):
+        raise HTTPException(422, "Unsupported or ineligible options cannot be proposed")
+    return create_intervention_proposal(comparison_id=payload.comparison_id, candidate_id=payload.candidate_id,
+        assessment_id=comparison["comparison_context_hash"], scenario_id=candidate["result_ref"]["scenario_id"],
+        actor=payload.actor, reason=payload.reason)
+
+
+@app.get("/api/interventions/proposals")
+def intervention_proposals(limit: int = Query(default=100, ge=1, le=250)):
+    return {"proposals": list_intervention_proposals(limit), "simulation_only": True}
+
+
+@app.patch("/api/interventions/proposals/{proposal_id}/review")
+def review_intervention_proposal(proposal_id: str, payload: InterventionReviewUpdate):
+    proposal = get_intervention_proposal(proposal_id)
+    if proposal is None:
+        raise HTTPException(404, "Intervention proposal not found")
+    if payload.status not in INTERVENTION_POLICY["review_transitions"].get(proposal["status"], []):
+        raise HTTPException(409, f"Invalid intervention review transition: {proposal['status']} -> {payload.status}")
+    applied = None
+    if payload.status == "approved_in_demo":
+        saved_candidate = get_scenario(proposal["scenario_id"])
+        if saved_candidate is None:
+            raise HTTPException(409, "Proposed assessment evidence is no longer available")
+        request = ScenarioRequest.model_validate(saved_candidate["scenario_request"])
+        parameters = {**request.action_parameters, "approval_proposal_id": proposal_id,
+                      "approval_actor": payload.actor, "approved_at": datetime.now(timezone.utc).isoformat()}
+        approved_request = request.model_copy(update={"action_parameters": parameters})
+        result = evaluate_scenario(approved_request)
+        result["applied_simulation"] = {"proposal_id": proposal_id, "approved_by": payload.actor,
+            "approved_at": parameters["approved_at"], "scope": "new_simulated_result_only",
+            "existing_loan_events_mutated": False, "external_message_sent": False}
+        result = save_scenario(result["scenario_id"], result["borrower_id"], result["input_hash"],
+                               approved_request.model_dump(mode="json"), result)
+        applied = {"scenario_id": result["scenario_id"], "result_hash": result["result_hash"],
+                   "scope": "new_simulated_result_only", "existing_loan_events_mutated": False,
+                   "external_message_sent": False}
+    try:
+        updated = transition_intervention_proposal(proposal_id, status=payload.status, actor=payload.actor,
+            reason=payload.reason, allowed_transitions=INTERVENTION_POLICY["review_transitions"],
+            applied_simulation=applied)
+    except ValueError as exc:
+        raise HTTPException(409, str(exc)) from exc
+    return updated
 
 
 @app.get("/api/comparison-bundles/{bundle_id}")
@@ -321,13 +429,16 @@ def reopen_comparison_bundle(bundle_id: str):
     if bundle is None:
         raise HTTPException(404, "Saved comparison bundle not found")
     refs = [bundle["baseline_ref"]["scenario_id"], bundle["stress_ref"]["scenario_id"],
-            *[row["scenario_id"] for row in bundle["candidate_refs"]]]
+            *[row["scenario_id"] for row in bundle["candidate_refs"]],
+            *bundle.get("action_result_refs", {}).values()]
+    refs = list(dict.fromkeys(refs))
     results = {scenario_id: get_scenario(scenario_id) for scenario_id in refs}
     if any(result is None for result in results.values()):
         raise HTTPException(500, "Comparison bundle has a missing linked result")
+    action_results = {candidate_id: results[scenario_id] for candidate_id, scenario_id in bundle.get("action_result_refs", {}).items()}
     return {**bundle, "selected": results[bundle["stress_ref"]["scenario_id"]],
             "candidates": [{**results[ref["scenario_id"]], "comparison_context_hash": bundle["comparison_context_hash"]}
-                           for ref in bundle["candidate_refs"]], "results": results}
+                           for ref in bundle["candidate_refs"]], "action_results": action_results, "results": results}
 
 
 @app.get("/api/scenarios/{scenario_id}", response_model=ScenarioBundle)
@@ -340,6 +451,127 @@ def reopen_scenario(scenario_id: str):
 @app.get("/api/scenarios")
 def saved_scenarios(limit: int = Query(default=50, ge=1, le=100)):
     return {"scenarios": list_scenarios(limit)}
+
+
+@app.get("/api/warnings")
+def warning_evidence(limit: int = Query(default=200, ge=1, le=500)):
+    """Immutable F7 evidence; mutable warning task state is stored separately."""
+    return {"warnings": list_warning_evidence(limit), "synthetic_scenarios_only": True,
+            "lifecycle_owner": "F9", "evidence_is_immutable": True}
+
+
+@app.get("/api/watchlist")
+def warning_watchlist(branch_id: str | None = None, status: str | None = None,
+                      severity: str | None = None, page: int = Query(default=1, ge=1),
+                      page_size: int = Query(default=25, ge=1, le=100)):
+    evidence_rows = list_warning_evidence(5000)
+    records = []
+    for row in evidence_rows:
+        scenario = get_scenario(row["assessment_id"])
+        if scenario is None:
+            continue
+        borrower = scenario.get("frozen_context", {}).get("borrower", {})
+        task = ensure_warning_task(row["derivation_key"])
+        warning = row.get("warning", {})
+        records.append({"derivation_key": row["derivation_key"], "assessment_id": row["assessment_id"],
+            "borrower_id": scenario.get("borrower_id"), "borrower_alias": borrower.get("alias"),
+            "branch_id": borrower.get("branch"), "rule": row["rule"], "rule_version": row["rule_version"],
+            "severity": warning.get("severity", "unknown"), "season": warning.get("season"),
+            "evidence": row.get("record", {}), "assumption_tags": row.get("record", {}).get("assumption_tags", []),
+            "created_at": row["created_at"], "task": task})
+    return page_watchlist(records, branch_id=branch_id, status=status, severity=severity,
+                          page=page, page_size=page_size)
+
+
+@app.post("/api/warnings/{derivation_key}/workflow")
+def update_warning_workflow(derivation_key: str, payload: WarningWorkflowUpdate):
+    if get_warning_evidence(derivation_key) is None:
+        raise HTTPException(404, "Persisted warning evidence not found")
+    ensure_warning_task(derivation_key)
+    if payload.operation == "supersede" and not payload.superseded_by:
+        raise HTTPException(422, "Supersede requires superseded_by evidence key")
+    try:
+        return transition_warning_task(derivation_key, operation=payload.operation,
+            actor=payload.actor, reason=payload.reason, assigned_to=payload.assigned_to,
+            superseded_by=payload.superseded_by)
+    except (KeyError, ValueError) as exc:
+        raise HTTPException(409, str(exc)) from exc
+
+
+@app.post("/api/allocations")
+def create_allocation(payload: AllocationRequest):
+    frozen, excluded = freeze_from_saved_comparisons(payload.model_dump(mode="json"))
+    solved = solve_allocation(frozen, payload.budget_inr, coverage_enabled=payload.coverage_enabled,
+        coverage_floors=payload.coverage_floors, timeout_ms=payload.timeout_ms, excluded=excluded)
+    input_snapshot = payload.model_dump(mode="json")
+    input_snapshot["candidates"] = frozen
+    allocation_id = stable_allocation_id(input_snapshot, solved)
+    applied = []
+    if solved["solver_status"] in {"optimal", "time_limit_feasible"}:
+        for candidate in solved["selected"]:
+            result = apply_allocated_candidate(candidate, allocation_id)
+            applied.append({"candidate_id": candidate["candidate_id"], "borrower_id": candidate["borrower_id"],
+                "scenario_id": result["scenario_id"], "result_hash": result["result_hash"],
+                "program_cost_inr": candidate["cost_inr"], "program_cost_date": candidate["cost_date"],
+                "cash_gap_inr": result["stress_with_action"]["cash_gap_inr"],
+                "three_season_debt_cycle": result["debt_cycle"]})
+    solved["applied_scenarios"] = applied
+    solved["branch_id"] = payload.branch_id
+    solved["scenario_scope"] = "synthetic_demo_unprotected_until_f10"
+    return save_allocation_snapshot(allocation_id, payload.branch_id, input_snapshot, solved)
+
+
+@app.get("/api/allocations/candidates")
+def allocation_candidate_pool(branch_id: str, limit: int = Query(default=200, ge=1, le=500)):
+    candidates, excluded = [], []
+    for bundle in list_comparison_bundles(limit):
+        baseline_id = bundle.get("baseline_ref", {}).get("scenario_id")
+        baseline = get_scenario(baseline_id) if baseline_id else None
+        if baseline is None:
+            continue
+        borrower = baseline.get("frozen_context", {}).get("borrower", {})
+        if borrower.get("branch") != branch_id:
+            continue
+        for option in bundle.get("action_options", []):
+            if "hypothetical_assistance" not in option.get("action_ids", []):
+                continue
+            scenario_id = option.get("result_ref", {}).get("scenario_id")
+            result = get_scenario(scenario_id) if scenario_id else None
+            params = (result or {}).get("scenario_request", {}).get("action_parameters", {})
+            events = [event for event in params.get("cash_events", []) if event.get("kind") == "hypothetical_assistance"]
+            metric = option.get("metrics", {}).get("immediate_gap_relief_inr")
+            if not option.get("eligible") or not option.get("evaluable") or not result or not events or metric is None:
+                excluded.append({"borrower_id": baseline["borrower_id"], "candidate_id": option.get("candidate_id"),
+                                 "reason": option.get("not_ranked_reason") or "not a frozen eligible assistance result"})
+                continue
+            exact_cost = sum((Decimal(str(event["amount_inr"])) for event in events), Decimal("0"))
+            candidate = {"candidate_id": f"{baseline['borrower_id']}:{bundle['bundle_id']}:{option['candidate_id']}",
+                "borrower_id": baseline["borrower_id"], "branch_id": borrower.get("branch"),
+                "scenario_id": scenario_id, "comparison_id": bundle["bundle_id"],
+                "action_candidate_id": option["candidate_id"], "scenario_context_hash": result["comparison_context_hash"],
+                "policy_version": bundle["policy_version"], "engine_version": result["engine_version"],
+                "cost_inr": str(exact_cost), "cost_date": events[0]["date"] if len({event["date"] for event in events}) == 1 else None,
+                "benefit_value": str(metric),
+                "benefit_definition": "immediate_due_gap_relief_inr", "benefit_unit": "INR_due_gap_relief",
+                "coverage_tags": [f"branch:{borrower.get('branch')}", f"district:{borrower.get('district')}"]}
+            candidates.append(candidate)
+    return {"branch_id": branch_id, "candidates": candidates, "excluded": excluded,
+        "candidate_source": "immutable_saved_f8_comparisons", "security_scope_mode": "synthetic_demo_unprotected_until_f10"}
+
+
+@app.get("/api/allocations")
+def allocation_history(branch_id: str | None = None, limit: int = Query(default=50, ge=1, le=250)):
+    return {"allocations": list_allocation_snapshots(branch_id, limit),
+            "security_scope_mode": "synthetic_demo_unprotected_until_f10"}
+
+
+@app.get("/api/allocations/{allocation_id}")
+def allocation_detail(allocation_id: str):
+    allocation = get_allocation_snapshot(allocation_id)
+    if allocation is None:
+        raise HTTPException(404, "Allocation snapshot not found")
+    allocation["security_scope_mode"] = "synthetic_demo_unprotected_until_f10"
+    return allocation
 
 
 @app.get("/api/sources")

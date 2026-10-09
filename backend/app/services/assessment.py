@@ -35,7 +35,20 @@ SENSITIVITY = {
     "Maize": {"planting": "0.45", "vegetative": "0.65", "flowering": "1", "grain_fill": "0.8", "harvest": "0.3"},
 }
 WARNING_CONFIG = json.loads((Path(__file__).parents[1] / "config" / "warnings.json").read_text())
+INTERVENTION_POLICY_CONFIG = json.loads((Path(__file__).parents[1] / "config" / "interventions.json").read_text(encoding="utf-8"))
 WEATHER_PATH = Path(__file__).parents[3] / "data" / "raw" / "open_meteo" / "pune_kharif_2015_era5.json"
+
+
+def _stable_event_id(when: date, category: str, sequence: int = 0) -> str:
+    return "EV-" + hashlib.sha256(f"{when.isoformat()}:{category}:{sequence}".encode()).hexdigest()[:12].upper()
+
+
+def _season_shift_days(start: date, season: int) -> int:
+    try:
+        target = start.replace(year=start.year + season - 1)
+    except ValueError:  # Feb 29 in a non-leap target year
+        target = start.replace(year=start.year + season - 1, day=28)
+    return (target - start).days
 
 
 def _calendar(b: dict) -> list[dict]:
@@ -232,20 +245,23 @@ def _schedule(b: dict, action: str, shift: int = 0) -> tuple[list[dict], Decimal
     due_date = b["due_at"] + timedelta(days=shift)
     accrued_interest = money(original_due - principal)
     if action == "reschedule_30d":
-        extra = money(principal * rate * 30 / 365)
-        schedule = [{"date": due_date + timedelta(days=30), "amount_inr": original_due + extra,
+        shift_days = int(INTERVENTION_POLICY_CONFIG["constraints"]["max_due_shift_days"])
+        extra = money(principal * rate * shift_days / 365)
+        schedule = [{"date": due_date + timedelta(days=shift_days), "amount_inr": original_due + extra,
                      "principal_due_inr": principal, "interest_due_inr": accrued_interest + extra, "fee_due_inr": D("0.00")}]
     elif action == "split_payment":
-        fee = money(original_due * D("0.015"))
-        extra_interest = money(principal / 2 * rate * 45 / 365)
+        split_fraction = D(str(INTERVENTION_POLICY_CONFIG["constraints"]["split_first_payment_fraction"]))
+        split_delay = int(INTERVENTION_POLICY_CONFIG["constraints"]["split_second_payment_delay_days"])
+        fee = money(original_due * D(str(INTERVENTION_POLICY_CONFIG["constraints"]["split_fee_fraction"])))
+        extra_interest = money(principal * (1-split_fraction) * rate * split_delay / 365)
         extra = fee + extra_interest
-        first = money((original_due + fee) / 2)
-        principal_first = money(principal / 2)
-        interest_first = money(accrued_interest / 2)
+        first = money((original_due + fee) * split_fraction)
+        principal_first = money(principal * split_fraction)
+        interest_first = money(accrued_interest * split_fraction)
         fee_first = money(fee / 2)
         schedule = [{"date": due_date, "amount_inr": first, "principal_due_inr": principal_first,
                      "interest_due_inr": interest_first, "fee_due_inr": money(first-principal_first-interest_first)},
-                    {"date": due_date + timedelta(days=45), "amount_inr": original_due + fee - first + extra_interest,
+                    {"date": due_date + timedelta(days=split_delay), "amount_inr": original_due + fee - first + extra_interest,
                      "principal_due_inr": money(principal-principal_first),
                      "interest_due_inr": money(accrued_interest-interest_first+extra_interest),
                      "fee_due_inr": money(fee-fee_first)}]
@@ -257,7 +273,8 @@ def _schedule(b: dict, action: str, shift: int = 0) -> tuple[list[dict], Decimal
 
 def build_dated_ledger(b: dict, revenue: Decimal, sale_date: date, schedule: list[dict], bridge_limit: Decimal,
                        *, opening_cash=None, carried_formal=D("0"), carried_informal=D("0"), shift=0,
-                       minimum_reserve=D("0")) -> dict:
+                       minimum_reserve=D("0"), carried_formal_days=365, carried_informal_days=365,
+                       additional_events: list[dict] | None = None) -> dict:
     """Cash is carried forward; principal enters once and unpaid due enters debt once.
 
     Every season receives a new synthetic crop loan. Carried bank arrears accrue
@@ -272,40 +289,53 @@ def build_dated_ledger(b: dict, revenue: Decimal, sale_date: date, schedule: lis
         {"date": b["due_at"] + timedelta(days=shift - 3), "kind": "household_expense", "amount_inr": -b["living_cost_inr"], "priority": 1},
         {"date": sale_date, "kind": "crop_sale", "amount_inr": revenue, "priority": 0},
     ]
+    for item in additional_events or []:
+        event_date = date.fromisoformat(item["date"]) if isinstance(item["date"], str) else item["date"]
+        events.append({"date": event_date, "kind": item["kind"], "amount_inr": D(str(item["amount_inr"])),
+                       "priority": 0 if D(str(item["amount_inr"])) >= 0 else 1,
+                       "source_tag": item.get("source_tag", "assumed"), "scenario_only": True})
     scheduled = deepcopy(schedule)
-    scheduled[0]["amount_inr"] = money(scheduled[0]["amount_inr"] + carried_formal * (1 + b["annual_rate"]))
+    carried_formal_interest = money(carried_formal * b["annual_rate"] * D(carried_formal_days) / 365)
+    scheduled[0]["amount_inr"] = money(scheduled[0]["amount_inr"] + carried_formal + carried_formal_interest)
+    scheduled[0]["principal_due_inr"] = money(scheduled[0].get("principal_due_inr", b["loan_principal_inr"]) + carried_formal)
     for item in scheduled:
         events.append({"date": item["date"], "kind": "bank_due", "due_inr": item["amount_inr"], "priority": 2,
                        "principal_due_inr": item.get("principal_due_inr", b["loan_principal_inr"]),
-                       "interest_due_inr": item.get("interest_due_inr", D("0")) + (carried_formal * b["annual_rate"] if item is scheduled[0] else D("0")),
+                       "interest_due_inr": item.get("interest_due_inr", D("0")) + (carried_formal_interest if item is scheduled[0] else D("0")),
                        "fee_due_inr": item.get("fee_due_inr", D("0"))})
     ledger, payments, draws = [], [], []
     remaining_bridge = money(bridge_limit)
-    formal_balance = D("0.00")
+    formal_principal = money(carried_formal + sum((item.get("principal_due_inr", b["loan_principal_inr"]) for item in scheduled), D("0.00")))
+    formal_interest_unpaid = D("0.00")
+    formal_fees_unpaid = D("0.00")
     def post(when, kind, amount, **extra):
         nonlocal cash
         cash = money(cash + amount)
         ledger.append({"date": when.isoformat(), "kind": kind, "amount_inr": money(amount), "cash_after_inr": cash, **extra})
     for event in sorted(events, key=lambda x: (x["date"], x["priority"])):
         if event["kind"] != "bank_due":
-            post(event["date"], event["kind"], event["amount_inr"])
+            post(event["date"], event["kind"], event["amount_inr"],
+                 source_tag=event.get("source_tag", "simulated"), scenario_only=True)
             continue
         amount, pre = money(event["due_inr"]), cash
         available = max(D("0.00"), money(pre - minimum_reserve))
         gap = max(D("0.00"), money(amount - available))
         draw = min(remaining_bridge, gap)
         if draw:
-            post(event["date"], "informal_bridge_draw", draw)
+            post(event["date"], "informal_bridge_draw", draw, source_tag="assumed", scenario_only=True)
             draws.append((event["date"], draw))
             remaining_bridge -= draw
         paid = min(amount, max(D("0.00"), money(cash - minimum_reserve)))
         unpaid = money(amount - paid)
-        formal_balance += unpaid
         fee_paid = min(paid, money(event.get("fee_due_inr", D("0"))))
         interest_paid = min(money(paid-fee_paid), money(event.get("interest_due_inr", D("0"))))
         principal_paid = min(money(paid-fee_paid-interest_paid), money(event.get("principal_due_inr", b["loan_principal_inr"])))
+        formal_principal = money(formal_principal - principal_paid)
+        formal_interest_unpaid = money(formal_interest_unpaid + max(D("0.00"), money(event.get("interest_due_inr", D("0"))-interest_paid)))
+        formal_fees_unpaid = money(formal_fees_unpaid + max(D("0.00"), money(event.get("fee_due_inr", D("0"))-fee_paid)))
         post(event["date"], "bank_payment", -paid, scheduled_due_inr=amount,
-             principal_paid_inr=principal_paid, interest_paid_inr=interest_paid, fee_paid_inr=fee_paid)
+             principal_paid_inr=principal_paid, interest_paid_inr=interest_paid, fee_paid_inr=fee_paid,
+             source_tag="simulated", scenario_only=True)
         payments.append({"date": event["date"].isoformat(), "cash_before_due_inr": pre,
                          "cash_available_above_reserve_inr": available, "minimum_reserve_inr": money(minimum_reserve),
                          "bank_due_inr": amount, "cash_gap_inr": gap, "informal_draw_inr": draw,
@@ -317,17 +347,25 @@ def build_dated_ledger(b: dict, revenue: Decimal, sale_date: date, schedule: lis
                          "cash_after_due_inr": cash, "signed_post_payment_cash_inr": cash})
     season_end = max(sale_date, scheduled[-1]["date"]) + timedelta(days=7)
     informal_rate = D(WARNING_CONFIG["informal_rate"])
-    informal_interest = money(carried_informal * informal_rate + sum((amount * informal_rate * D((season_end - when).days) / 365 for when, amount in draws), D("0")))
+    informal_interest = money(carried_informal * informal_rate * D(carried_informal_days) / 365 + sum((amount * informal_rate * D((season_end - when).days) / 365 for when, amount in draws), D("0")))
     informal_due = money(carried_informal + sum((amount for _, amount in draws), D("0")) + informal_interest)
     informal_paid = min(max(D("0.00"), cash), informal_due)
     if informal_paid:
         post(season_end, "informal_payment", -informal_paid)
     informal_balance = money(informal_due - informal_paid)
+    # Unpaid interest is capitalized at season close; paid interest never reduces principal.
+    formal_interest_capitalized = money(formal_interest_unpaid)
+    formal_balance_end = money(formal_principal + formal_interest_capitalized + formal_fees_unpaid)
     return {"opening_cash_inr": money(opening), "minimum_reserve_inr": money(minimum_reserve), "cash_by_date": ledger, "payments": payments,
             "cash_pre_due_inr": payments[0]["cash_before_due_inr"], "due_inr": payments[0]["bank_due_inr"],
             "cash_gap_inr": payments[0]["cash_gap_inr"], "cash_gap_total_inr": money(sum(p["cash_gap_inr"] for p in payments)),
             "formal_paid_inr": money(sum(p["formal_paid_inr"] for p in payments)),
-            "formal_balance_end_inr": money(formal_balance), "bridge_draw_inr": money(sum((v for _, v in draws), D("0"))),
+            "formal_balance_end_inr": formal_balance_end, "formal_principal_end_inr": money(formal_principal + formal_interest_capitalized),
+            "formal_interest_accrued_inr": money(sum((p["interest_paid_inr"] + p["unpaid_interest_inr"] for p in payments), D("0.00"))),
+            "formal_interest_capitalized_inr": formal_interest_capitalized, "formal_fees_unpaid_inr": formal_fees_unpaid,
+            "principal_paid_inr": money(sum((p["principal_paid_inr"] for p in payments), D("0"))),
+            "formal_interest_paid_inr": money(sum((p["interest_paid_inr"] for p in payments), D("0"))),
+            "bridge_draw_inr": money(sum((v for _, v in draws), D("0"))),
             "informal_balance_end_inr": informal_balance, "informal_interest_inr": informal_interest,
             "informal_paid_inr": money(informal_paid), "net_free_cash_inr": cash,
             "bank_total_due_inr": money(sum(p["bank_due_inr"] for p in payments)), "season_end": season_end.isoformat()}
@@ -337,7 +375,9 @@ def _assessment(b: dict, req: ScenarioRequest, *, shock: bool, action: str = "no
     o = req.overrides
     stage = o.heatwave_growth_stage if shock else "flowering"
     heat, rain, price_delta = (o.heatwave_days, o.rainfall_change_pct, o.market_price_change_pct) if shock else (0, 0, 0)
-    irrigation = o.irrigation_fraction if shock and o.irrigation_fraction is not None else b["irrigation_fraction"]
+    action_parameters = req.action_parameters if action != "none" else {}
+    schedule_action = action_parameters.get("schedule_action") or (action if action in {"reschedule_30d", "split_payment"} else "none")
+    irrigation = action_parameters.get("irrigation_fraction_after") if action_parameters.get("irrigation_fraction_after") is not None else (o.irrigation_fraction if shock and o.irrigation_fraction is not None else b["irrigation_fraction"])
     stages = _calendar(b)
     stage_by_name = {row["name"]: row for row in stages}
     selected_window = stage_by_name[stage]
@@ -366,14 +406,19 @@ def _assessment(b: dict, req: ScenarioRequest, *, shock: bool, action: str = "no
     price = money(b["price_inr_per_quintal"] * (1 + D(str(price_delta)) / 100))
     revenue = money(production * 10 * price * b["sale_fraction"])
     sale_date = b["harvest_date"] + timedelta(days=heat * 2)
-    schedule, cost, original_due = _schedule(b, action)
-    ledger = build_dated_ledger(b, revenue, sale_date, schedule, money(o.assumed_informal_bridge_inr if shock else 0))
+    schedule, schedule_cost, original_due = _schedule(b, schedule_action)
+    extra_events = []
+    raw_events = action_parameters.get("cash_events", [])
+    for event in raw_events:
+        extra_events.append({**event, "date": date.fromisoformat(event["date"]), "amount_inr": D(str(event["amount_inr"]))})
+    action_cost = money(D(str(action_parameters.get("program_cost_inr", "0"))) + schedule_cost)
+    ledger = build_dated_ledger(b, revenue, sale_date, schedule, money(o.assumed_informal_bridge_inr if shock else 0), additional_events=extra_events)
     # 21 equally weighted, declared hypothetical yield/price paths. Frequencies
     # describe only this finite scenario set, never historical borrower defaults.
     shortfalls = repaid = 0
     for i in range(-10, 11):
         path_revenue = money(revenue * (1 + D(i) / 50) * (1 + D(i) / 100))
-        path = build_dated_ledger(b, path_revenue, sale_date, schedule, money(o.assumed_informal_bridge_inr if shock else 0))
+        path = build_dated_ledger(b, path_revenue, sale_date, schedule, money(o.assumed_informal_bridge_inr if shock else 0), additional_events=extra_events)
         shortfalls += int(any(p["cash_gap_inr"] > 0 for p in path["payments"]))
         repaid += int(path["formal_balance_end_inr"] == 0)
     stage_weather = {}
@@ -400,7 +445,8 @@ def _assessment(b: dict, req: ScenarioRequest, *, shock: bool, action: str = "no
     }
     return {**ledger, "yield_t_per_ha": yield_value, "production_tonnes": production, "price_inr_per_quintal": price,
             "gross_revenue_inr": revenue, "sale_date": sale_date.isoformat(), "due_date": schedule[0]["date"].isoformat(),
-            "contractual_due_inr": original_due, "loan_schedule": schedule, "action_cost_inr": cost, "action_id": action,
+            "contractual_due_inr": original_due, "loan_schedule": schedule, "action_cost_inr": action_cost,
+            "action_id": action, "action_parameters": _jsonable(action_parameters),
             "stage_stress": stress_features, "stage_weather_features": stage_weather, "crop_stages": stages,
             "crop_calendar": {**CALENDAR_PROVENANCE, "crop": b["crop"], "declared_geography": b["district"], "sowing_date": b["sowing_date"], "harvest_date": b["harvest_date"], "season_days": (b["harvest_date"]-b["sowing_date"]).days + 1, "ordered": True, "overlap_policy": "none; season-relative partition", "short_season_policy": "leave stages without a day unavailable"},
             "reanalysis": reanalysis,
@@ -418,56 +464,131 @@ def _assessment(b: dict, req: ScenarioRequest, *, shock: bool, action: str = "no
 
 def _three_seasons(b: dict, a: dict, req: ScenarioRequest, *, bridge_enabled: bool) -> list[dict]:
     cash, formal, informal = b["initial_cash_inr"], D("0"), D("0")
+    previous_season_end = None
+    previous_due_date = None
     rows = []
+    action_parameters = a.get("action_parameters", {})
+    schedule_action = action_parameters.get("schedule_action") or (a["action_id"] if a["action_id"] in {"reschedule_30d", "split_payment"} else "none")
     for season in range(1, 4):
-        shift = 365 * (season - 1)
-        schedule, action_cost, _ = _schedule(b, a["action_id"], shift)
-        opening_liabilities = money(formal + informal + b["loan_principal_inr"])
+        shift = _season_shift_days(b["sowing_date"], season)
+        schedule, schedule_cost, _ = _schedule(b, schedule_action, shift)
+        action_cost = money(schedule_cost + (D(str(action_parameters.get("program_cost_inr", "0"))) if season == 1 else D("0")))
+        opening_formal, opening_informal = formal, informal
+        opening_liabilities = money(formal + informal)
+        sale_date = date.fromisoformat(a["sale_date"]) + timedelta(days=shift)
+        season_end = max(sale_date, schedule[-1]["date"]) + timedelta(days=7)
+        carried_formal_days = (schedule[0]["date"] - previous_due_date).days if previous_due_date else 365
+        carried_informal_days = (season_end - previous_season_end).days if previous_season_end else 365
         flow = build_dated_ledger(b, a["gross_revenue_inr"], date.fromisoformat(a["sale_date"]) + timedelta(days=shift),
                                   schedule, money(req.overrides.assumed_informal_bridge_inr if bridge_enabled else 0),
-                                  opening_cash=cash, carried_formal=formal, carried_informal=informal, shift=shift)
+                                  opening_cash=cash, carried_formal=formal, carried_informal=informal, shift=shift,
+                                  carried_formal_days=carried_formal_days, carried_informal_days=carried_informal_days,
+                                  additional_events=action_parameters.get("cash_events", []) if season == 1 else [])
         cash, formal, informal = flow["net_free_cash_inr"], flow["formal_balance_end_inr"], flow["informal_balance_end_inr"]
-        rows.append({"season": season, "climate_shock": bridge_enabled, "yield_t_per_ha": a["yield_t_per_ha"],
+        previous_season_end = date.fromisoformat(flow["season_end"])
+        previous_due_date = schedule[-1]["date"]
+        informal_interest_paid = min(flow["informal_paid_inr"], flow["informal_interest_inr"])
+        informal_principal_paid = max(D("0.00"), flow["informal_paid_inr"] - informal_interest_paid)
+        informal_interest_capitalized = max(D("0.00"), money(flow["informal_interest_inr"] - informal_interest_paid))
+        debt_close = money(formal + informal)
+        conservation_expected = money(opening_liabilities + b["loan_principal_inr"] + flow["formal_interest_capitalized_inr"]
+            + flow["formal_fees_unpaid_inr"] - flow["principal_paid_inr"] + flow["bridge_draw_inr"]
+            + informal_interest_capitalized - informal_principal_paid)
+        ledger_events = [{**event, "event_id": _stable_event_id(date.fromisoformat(event["date"]), event["kind"], index),
+                          "source_tag": "simulated", "scenario_only": True}
+                         for index, event in enumerate(flow["cash_by_date"])]
+        payment_events = [{**payment, "event_id": _stable_event_id(date.fromisoformat(payment["date"]), "formal_bank_payment", index),
+                           "source_tag": "simulated", "scenario_only": True}
+                          for index, payment in enumerate(flow["payments"])]
+        season_sale_date = date.fromisoformat(a["sale_date"]) + timedelta(days=shift)
+        rows.append({"season": season, "season_id": f"S{season}-{season_sale_date.year}",
+                     "season_start_date": (b["sowing_date"] + timedelta(days=shift)).isoformat(),
+                     "season_end_date": flow["season_end"],
+                     "climate_shock": bridge_enabled,
+                     "shock_path": "same_frozen_shock_repeated_each_season" if bridge_enabled else "frozen_baseline_no_shock",
+                     "assumption_tags": ["synthetic_fixture", "assumed_climate", "assumed_price", "simulated_cash_flow"],
+                     "yield_t_per_ha": a["yield_t_per_ha"],
                      "yield_projection": a["yield_projection"],
-                     "gross_revenue_inr": a["gross_revenue_inr"], "opening_total_debt_inr": opening_liabilities,
+                     "gross_revenue_inr": a["gross_revenue_inr"], "opening_cash_inr": flow["opening_cash_inr"],
+                     "closing_cash_inr": flow["net_free_cash_inr"], "opening_total_debt_inr": opening_liabilities,
+                     "opening_formal_principal_inr": opening_formal, "opening_informal_principal_inr": opening_informal,
                      "cash_before_due_inr": flow["cash_pre_due_inr"], "bank_due_inr": flow["bank_total_due_inr"],
                      "formal_paid_inr": flow["formal_paid_inr"], "informal_draw_inr": flow["bridge_draw_inr"],
-                     "formal_balance_end_inr": formal, "informal_balance_end_inr": informal,
+                     "new_formal_principal_inr": b["loan_principal_inr"],
+                     "formal_balance_end_inr": formal, "formal_principal_end_inr": formal,
+                     "formal_interest_accrued_inr": flow["formal_interest_accrued_inr"],
+                     "formal_interest_capitalized_inr": flow["formal_interest_capitalized_inr"],
+                     "formal_interest_paid_inr": flow["formal_interest_paid_inr"], "principal_paid_inr": flow["principal_paid_inr"],
+                     "formal_interest_end_inr": D("0.00"), "informal_balance_end_inr": informal,
+                     "informal_principal_end_inr": money(opening_informal + flow["bridge_draw_inr"] - informal_principal_paid + informal_interest_capitalized),
+                     "informal_interest_accrued_inr": flow["informal_interest_inr"],
+                     "informal_interest_capitalized_inr": informal_interest_capitalized,
+                     "informal_interest_end_inr": D("0.00"), "informal_interest_paid_inr": informal_interest_paid,
+                     "informal_principal_paid_inr": informal_principal_paid,
                      "total_debt_end_inr": money(formal + informal), "net_free_cash_inr": cash,
+                     "debt_conservation_expected_close_inr": conservation_expected,
+                     "debt_conservation_delta_inr": money(debt_close - conservation_expected),
+                     "permitted_writeoffs_inr": D("0.00"),
                      "cash_gap_inr": flow["cash_gap_total_inr"], "unmet_due_inr": formal,
-                     "interest_paid_inr": flow["informal_interest_inr"], "action_cost_inr": action_cost,
-                     "cash_by_date": flow["cash_by_date"], "payments": flow["payments"], "simulation_only": True})
+                     "interest_paid_inr": money(flow["formal_interest_paid_inr"] + informal_interest_paid), "action_cost_inr": action_cost,
+                     "unpaid_obligations": [p for p in payment_events if p["unmet_due_inr"] > 0],
+                     "bridge_events": [{"event_id": _stable_event_id(date.fromisoformat(p["date"]), "informal_bridge_draw", i),
+                         "amount_inr": p["informal_draw_inr"], "limit_inr": money(req.overrides.assumed_informal_bridge_inr if bridge_enabled else 0),
+                         "effective_date": p["date"], "annual_rate": WARNING_CONFIG["informal_rate"],
+                         "repayment_date": flow["season_end"], "source_tag": "assumed" if bridge_enabled and p["informal_draw_inr"] else "simulated",
+                         "scenario_only": True} for i, p in enumerate(flow["payments"]) if p["informal_draw_inr"] > 0],
+                     "cash_by_date": ledger_events, "payments": payment_events, "simulation_only": True})
     return rows
 
 
 def derive_debt_warnings(cycle: list[dict], stress: dict, action: dict | None) -> list[dict]:
     warnings = []
     threshold = D(WARNING_CONFIG["materiality_inr"])
-    def add(rule, severity, season, evidence, bridge=False):
+    def add(rule, severity, season, evidence, bridge=False, measured=None, event_ids=None):
+        evidence = _jsonable(evidence)
+        assessment_id = stress.get("scenario_id", stress.get("comparison_context_hash", "unpersisted"))
+        action_parameters = (action or {}).get("action_parameters", {})
+        action_tags = list(action_parameters.get("source_tags", []))
+        action_tags.extend(event.get("source_tag", "assumed") for event in action_parameters.get("cash_events", []))
+        trigger = {"rule": rule, "version": WARNING_CONFIG["version"], "assessment_id": assessment_id,
+                   "season_ids": [r.get("season_id", str(r.get("season"))) for r in cycle],
+                   "thresholds": {"materiality_inr": str(threshold), "repeated_seasons": WARNING_CONFIG["repeated_seasons"]},
+                   "measured_values": _jsonable(measured if measured is not None else evidence),
+                   "event_ids": list(event_ids or []) + [event.get("event_id") for event in action_parameters.get("cash_events", []) if event.get("event_id")],
+                   "assumption_tags": sorted({tag for r in cycle for tag in r.get("assumption_tags", [])} | set(action_tags))}
+        derivation_key = hashlib.sha256(json.dumps(trigger, sort_keys=True, separators=(",", ":"), default=str).encode()).hexdigest()
         warnings.append({"id": rule, "severity": severity, "season": season, "evidence": evidence,
                          "trace": "Rule evaluated against the canonical modeled payment/debt ledger.",
                          "proposed_officer_action": "Review dated cash needs and affordable repayment options with the borrower.",
                          "simulation_only": True, "triggered_by_assumed_informal_borrowing": bridge,
-                         "threshold_version": WARNING_CONFIG["version"]})
+                         "threshold_version": WARNING_CONFIG["version"], "rule_version": WARNING_CONFIG["version"],
+                         "derivation_key": derivation_key, "evidence_record": trigger})
     for payment in stress["payments"]:
-        if payment["informal_draw_inr"] > 0 and payment["formal_paid_inr"] > 0 and payment["cash_gap_inr"] > 0:
-            add("BRIDGE_USED_FOR_FORMAL_DUE", "high", 1, payment, True)
+        if payment.get("informal_draw_inr", D("0")) > 0 and payment.get("formal_paid_inr", D("0")) > 0 and payment.get("cash_gap_inr", D("0")) > 0:
+            add("BRIDGE_USED_FOR_FORMAL_DUE", "high", 1, payment, True,
+                event_ids=[e["event_id"] for row in cycle for e in row.get("bridge_events", [])])
             break
     short = [row for row in cycle if row["cash_gap_inr"] >= threshold]
     if len(short) >= WARNING_CONFIG["repeated_seasons"]:
-        add("REPEATED_SHORTFALL", "high", short[0]["season"], {"seasons": [r["season"] for r in short], "gaps_inr": [r["cash_gap_inr"] for r in short]})
+        add("REPEATED_SHORTFALL", "high", short[0]["season"], {"seasons": [r["season"] for r in short], "gaps_inr": [r["cash_gap_inr"] for r in short]}, measured={"gaps_inr": [r["cash_gap_inr"] for r in short]}, event_ids=[e["event_id"] for r in short for e in r.get("bridge_events", [])])
     growing = [(prev, row) for prev, row in zip(cycle, cycle[1:]) if row["informal_balance_end_inr"] - prev["informal_balance_end_inr"] >= threshold]
     if growing:
         prev, row = growing[0]
-        add("INFORMAL_DEBT_GROWING", "high", row["season"], {"opening_balance_inr": prev["informal_balance_end_inr"], "closing_balance_inr": row["informal_balance_end_inr"], "assumed_rate": WARNING_CONFIG["informal_rate"]}, True)
+        add("INFORMAL_DEBT_GROWING", "high", row["season"], {"opening_balance_inr": prev["informal_balance_end_inr"], "closing_balance_inr": row["informal_balance_end_inr"], "assumed_rate": WARNING_CONFIG["informal_rate"]}, True, measured={"increase_inr": row["informal_balance_end_inr"] - prev["informal_balance_end_inr"]}, event_ids=[e["event_id"] for e in row.get("bridge_events", [])])
     for row in cycle:
-        if row["unmet_due_inr"] == 0 and row["total_debt_end_inr"] > row["opening_total_debt_inr"] + threshold:
+        if row.get("unmet_due_inr", D("0")) == 0 and row.get("formal_paid_inr", D("0")) > 0 and row["total_debt_end_inr"] > row["opening_total_debt_inr"] + threshold:
             add("FORMAL_PAID_TOTAL_DEBT_RISES", "high", row["season"], {"opening_debt_inr": row["opening_total_debt_inr"], "closing_debt_inr": row["total_debt_end_inr"]}, True)
             break
     if action and action["cash_gap_inr"] < stress["cash_gap_inr"]:
         extra = sum(r["action_cost_inr"] for r in action["debt_cycle"]) - sum(r["action_cost_inr"] for r in cycle)
-        if extra >= threshold:
-            add("ACTION_SHIFTS_BURDEN", "moderate", 1, {"stress_first_gap_inr": stress["cash_gap_inr"], "action_first_gap_inr": action["cash_gap_inr"], "extra_three_season_cost_inr": money(extra)})
+        future_debt_delta = action["debt_cycle"][-1]["total_debt_end_inr"] - cycle[-1]["total_debt_end_inr"]
+        if extra >= threshold or future_debt_delta >= threshold:
+            add("ACTION_SHIFTS_BURDEN", "moderate", 1, {"stress_first_gap_inr": stress["cash_gap_inr"],
+                "action_first_gap_inr": action["cash_gap_inr"], "extra_three_season_cost_inr": money(extra),
+                "stress_season3_total_debt_inr": cycle[-1]["total_debt_end_inr"],
+                "action_season3_total_debt_inr": action["debt_cycle"][-1]["total_debt_end_inr"],
+                "future_total_debt_increase_inr": money(future_debt_delta)}, measured={
+                "extra_three_season_cost_inr": money(extra), "future_total_debt_increase_inr": money(future_debt_delta)})
     return warnings
 
 
@@ -591,6 +712,7 @@ def build_canonical_ledger(b: dict, stress: dict) -> dict:
             "fee_component_inr": fee_comp,
             "running_cash_inr": str(money(D(str(ev["cash_after_inr"])))),
             "data_status": "synthetic_and_assumed",
+            "assumption_tag": ev.get("source_tag", "simulated"),
             "source_ids": [SOURCE_VERSION],
             "evidence_id": None,
             "scenario_only": True,
@@ -723,12 +845,15 @@ def evaluate_scenario(req: ScenarioRequest) -> dict:
     # date was supplied, so UI controls, snapshots, and driver text agree.
     req.overrides.heatwave_growth_stage = stress["heat_event"]["stage"]
     eligible = req.as_of < b["due_at"]
-    action = _assessment(b, req, shock=True, action=req.action_id) if req.action_id != "none" and eligible else None
+    candidate_id = req.action_parameters.get("candidate_id")
+    selected_action = candidate_id or req.action_id
+    action = _assessment(b, req, shock=True, action=selected_action) if selected_action != "none" and eligible else None
     baseline["debt_cycle"] = _three_seasons(b, baseline, req, bridge_enabled=False)
+    stress_no_bridge_cycle = _three_seasons(b, stress, req, bridge_enabled=False)
     stress["debt_cycle"] = _three_seasons(b, stress, req, bridge_enabled=True)
     if action:
         action["debt_cycle"] = _three_seasons(b, action, req, bridge_enabled=True)
-    warnings = derive_debt_warnings(stress["debt_cycle"], stress, action)
+    warnings = []
     path_definition = [{"path": i, "yield_multiplier_pct": i * 2, "price_multiplier_pct": i}
                        for i in range(-10, 11)]
     climate_path_hash = hashlib.sha256(json.dumps({"seed": DEMO_SEED, "paths": path_definition},
@@ -741,10 +866,18 @@ def evaluate_scenario(req: ScenarioRequest) -> dict:
     frozen = {"borrower": _jsonable(b), "as_of": req.as_of.isoformat(), "timezone": "Asia/Kolkata",
               "seed": DEMO_SEED, "climate_paths": {"count": len(path_definition), "hash": climate_path_hash},
               "sources": source_versions}
-    context = {**frozen, "overrides": req.overrides.model_dump()}
+    # Hash the same normalized numeric representation used by the API request
+    # echo. Defaults such as 0 and explicit 0.0 compare equal in Python but
+    # serialize differently, which previously split identical scenario paths.
+    context = {**frozen, "overrides": req.overrides.model_dump(mode="json")}
     canonical = lambda v: json.dumps(_jsonable(v), sort_keys=True, separators=(",", ":"), allow_nan=False)
     context_hash = hashlib.sha256(canonical(context).encode()).hexdigest()
-    input_hash = hashlib.sha256(canonical({**context, "action_id": req.action_id}).encode()).hexdigest()
+    input_hash = hashlib.sha256(canonical({**context, "action_id": req.action_id,
+        "action_parameters": req.action_parameters}).encode()).hexdigest()
+    stress["scenario_id"] = input_hash[:20]
+    if action:
+        action["scenario_id"] = input_hash[:20]
+    warnings = derive_debt_warnings(stress["debt_cycle"], stress, action)
     for result in (baseline, stress, action):
         if result:
             result["comparison_context_hash"] = context_hash
@@ -757,8 +890,12 @@ def evaluate_scenario(req: ScenarioRequest) -> dict:
         "source_versions": source_versions, "source_snapshot_ids": [SOURCE_VERSION], "frozen_context": frozen,
         "scenario_request": req.model_dump(mode="json"),
         "claim_scope": "synthetic_lending_scenario_conditional", "baseline": baseline, "stress": stress,
-        "stress_with_action": action, "action_status": "not_selected" if req.action_id == "none" else "simulated_proposal" if eligible else "ineligible",
+        "stress_with_action": action, "action_status": "not_selected" if selected_action == "none" else "simulated_proposal" if eligible else "ineligible",
         "action_candidates": candidates, "debt_cycle": stress["debt_cycle"], "debt_warnings": warnings,
+        "debt_worlds": {"comparison_context_hash": context_hash,
+            "no_bridge": {"label": "No bridge · modeled scenario", "bridge_enabled": False,
+            "seasons": stress_no_bridge_cycle}, "bridge": {"label": "Bridge enabled · modeled scenario",
+            "bridge_enabled": True, "seasons": stress["debt_cycle"]}},
         "comparison_deltas": {"stress_minus_baseline": {"cash_gap_inr": money(stress["cash_gap_inr"] - baseline["cash_gap_inr"]), "gross_revenue_inr": money(stress["gross_revenue_inr"] - baseline["gross_revenue_inr"])},
             "action_minus_stress": None if action is None else {"cash_gap_inr": money(action["cash_gap_inr"] - stress["cash_gap_inr"]), "action_cost_inr": action["action_cost_inr"]}},
         "repayment_bridge": derive_financial_bridge(b, baseline, stress),

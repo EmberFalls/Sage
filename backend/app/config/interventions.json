@@ -1,0 +1,43 @@
+{
+  "version": "f8-interventions-demo-v1",
+  "policy_class": "illustrative_demo_only",
+  "operational_policy_verified": false,
+  "objective": {
+    "id": "net_three_season_burden_v1",
+    "description": "Rank only eligible, evaluable candidates with positive immediate relief and positive net score; maximize immediate gap relief less incremental cost, interest, and season-three debt.",
+    "weights": {
+      "immediate_gap_relief_inr": 1.0,
+      "incremental_cost_inr": 1.0,
+      "additional_interest_inr": 1.0,
+      "season3_debt_increase_inr": 1.0
+    },
+    "tie_break": "candidate_id_ascending"
+  },
+  "constraints": {
+    "max_due_shift_days": 30,
+    "split_first_payment_fraction": 0.5,
+    "split_fee_fraction": 0.015,
+    "split_second_payment_delay_days": 45,
+    "assistance_max_inr": 100000,
+    "insurance_enrollment_cutoff_days_before_due": 30,
+    "pair_candidate_limit": 12
+  },
+  "catalog": [
+    {"id":"outreach","label":"Borrower outreach","evaluable":true,"mechanism":"No automatic numeric risk reduction; contact only.","source_tag":"assumed"},
+    {"id":"reschedule_30d","label":"Due-date shift","evaluable":true,"mechanism":"Move first due 30 days; accrue declared simple interest for the extension.","source_tag":"assumed"},
+    {"id":"split_payment","label":"Installment change","evaluable":true,"mechanism":"Split principal and scheduled amount across two dates; disclosed fee and interest terms.","source_tag":"assumed"},
+    {"id":"irrigation_support","label":"Irrigation support","evaluable":true,"mechanism":"Use only a declared scenario irrigation fraction; no observed water access inferred.","source_tag":"assumed"},
+    {"id":"hypothetical_assistance","label":"Hypothetical assistance","evaluable":true,"mechanism":"Dated cash credit, bounded by a declared scenario budget; not a program award.","source_tag":"assumed"},
+    {"id":"insurance_scenario","label":"Insurance scenario","evaluable":true,"mechanism":"Payout only with explicit enrollment before cutoff, explicit trigger, and dated payout.","source_tag":"assumed"},
+    {"id":"sowing_timing","label":"Pre-sowing timing option","evaluable":false,"mechanism":null,"source_tag":"simulated"},
+    {"id":"crop_change","label":"Pre-sowing crop option","evaluable":false,"mechanism":null,"source_tag":"simulated"}
+  ],
+  "compatible_pairs": [["reschedule_30d","hypothetical_assistance"],["split_payment","hypothetical_assistance"],["reschedule_30d","insurance_scenario"],["split_payment","insurance_scenario"],["outreach","reschedule_30d"],["outreach","split_payment"]],
+  "incompatible_pairs": [["reschedule_30d","split_payment"]],
+  "review_transitions": {
+    "proposed": ["under_review","rejected_in_demo"],
+    "under_review": ["approved_in_demo","rejected_in_demo"],
+    "approved_in_demo": [],
+    "rejected_in_demo": []
+  }
+}

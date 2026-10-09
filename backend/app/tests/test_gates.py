@@ -259,7 +259,16 @@ class GateVerification(unittest.TestCase):
         self.assertEqual(comparison['stress_ref']['result'], 'stress')
         reopened_comparison = self.client.get(f"/api/comparison-bundles/{comparison['bundle_id']}").json()
         self.assertEqual(reopened_comparison['bundle_hash'], comparison['bundle_hash'])
-        self.assertEqual(len(reopened_comparison['results']), 3)
+        # Reopened comparisons expose every evaluated action result. The catalog
+        # can grow, so pinning this to the original three scenarios hides newly
+        # saved candidate results and makes the test brittle.
+        expected_result_ids = {comparison['baseline_ref']['scenario_id'],
+                               comparison['stress_ref']['scenario_id'],
+                               *(row['scenario_id'] for row in comparison['candidate_refs']),
+                               *comparison.get('action_result_refs', {}).values()}
+        self.assertEqual(set(reopened_comparison['results']), expected_result_ids)
+        self.assertEqual(set(reopened_comparison['action_results']),
+                         set(comparison.get('action_result_refs', {})))
         duplicate = self.client.post('/api/interventions/evaluate',json=request).json()
         self.assertEqual(duplicate['bundle_id'], comparison['bundle_id'])
         changed = self.client.post('/api/interventions/evaluate',json={'overrides':{'heatwave_days':6}}).json()
