@@ -36,6 +36,12 @@ class F8InterventionTests(unittest.TestCase):
         self.assertEqual(self.by_id["crop_change"]["sowing_status"], "already_sown")
         self.assertIn("region", " ".join(self.by_id["crop_change"]["reasons"]).lower())
 
+    def test_api_and_comparison_context_hashes_match_for_numeric_defaults(self):
+        stress = evaluate_scenario(ScenarioRequest(overrides={"heatwave_days": 4}))
+        comparison, _ = evaluate_action_candidates(InterventionEvaluationRequest(overrides={"heatwave_days": 4}))
+        self.assertEqual(comparison["comparison_context_hash"], stress["comparison_context_hash"])
+        self.assertEqual(comparison["frozen_context"]["climate_paths"], stress["frozen_context"]["climate_paths"])
+
     def test_rescheduling_moves_due_date_and_exposes_interest_and_later_debt(self):
         option = self.by_id["reschedule_30d"]
         result = self.evaluate_option(option)

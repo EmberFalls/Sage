@@ -866,7 +866,10 @@ def evaluate_scenario(req: ScenarioRequest) -> dict:
     frozen = {"borrower": _jsonable(b), "as_of": req.as_of.isoformat(), "timezone": "Asia/Kolkata",
               "seed": DEMO_SEED, "climate_paths": {"count": len(path_definition), "hash": climate_path_hash},
               "sources": source_versions}
-    context = {**frozen, "overrides": req.overrides.model_dump()}
+    # Hash the same normalized numeric representation used by the API request
+    # echo. Defaults such as 0 and explicit 0.0 compare equal in Python but
+    # serialize differently, which previously split identical scenario paths.
+    context = {**frozen, "overrides": req.overrides.model_dump(mode="json")}
     canonical = lambda v: json.dumps(_jsonable(v), sort_keys=True, separators=(",", ":"), allow_nan=False)
     context_hash = hashlib.sha256(canonical(context).encode()).hexdigest()
     input_hash = hashlib.sha256(canonical({**context, "action_id": req.action_id,

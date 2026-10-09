@@ -12,7 +12,7 @@ if _env_path.exists():
 
 PRODUCT_NAME = os.getenv("PRODUCT_NAME", "Sage")
 DEMO_SEED = int(os.getenv("DEMO_SEED", "20261009"))
-ENGINE_VERSION = "risk-engine-v2-demo.4"
+ENGINE_VERSION = "risk-engine-v2-demo.5"
 
 # Authentication settings
 JWT_SECRET = os.getenv("JWT_SECRET", "sage-demo-super-secret-key-2026")
