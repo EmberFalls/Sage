@@ -259,12 +259,12 @@ def get_scenario(scenario_id: str) -> dict | None:
     from app.config import ENGINE_VERSION
     reasons = []
     current_borrower = get_borrower_record(result["borrower_id"])
-    if current_borrower:
+    frozen_borrower = result.get("frozen_context", {}).get("borrower")
+    if current_borrower and frozen_borrower and "posted_loan_events" in frozen_borrower:
         linked_loan = get_loan_record(result["borrower_id"])
         as_of = date.fromisoformat(result["assessment_as_of"])
         current_borrower["posted_loan_events"] = [event for event in (linked_loan or {}).get("posted_events", [])
                                                     if date.fromisoformat(event["date"]) <= as_of]
-    frozen_borrower = result.get("frozen_context", {}).get("borrower")
     # An application assessment can model a requested principal before the
     # borrower profile is updated on demo approval. That proposal is part of
     # the immutable scenario input, not evidence that its profile went stale.

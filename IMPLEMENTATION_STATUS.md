@@ -27,14 +27,14 @@ Detailed evidence and limitations: [verification report](demo/verification/REPOR
 | H02 | Verified demo | Source badges and explicit missing data. |
 | H03 | Verified demo | DB registry search/dossier. |
 | H04 | Verified demo | Loan events use selected snapshot. |
-| H05 | Verified illustrative | Dated assumed stages. |
+| H05 | Verified illustrative | Explicit inclusive local-date windows with calendar provenance, geography, version, uncertainty, and overlap flags. |
 | H06 | Unavailable | NDVI/soil absent. |
-| H07 | Fallback | Hypothetical weather, no issued forecast. |
-| H08 | Verified illustrative | Irrigation/yield/price feed backend. |
+| H07 | Conditional evidence + fallback | Pune ERA5 daily features align by date when geography and stage windows match; future observations are cut at `as_of`; otherwise missing. Forecast unavailable; hypothetical inputs remain separate. |
+| H08 | Verified illustrative | Yield output is versioned `stage-response-v3`, labeled illustrative, `t/ha`, with limitations; no aligned real yield rows are admitted. |
 | H09 | Verified simulation | 21 declared paths; uncalibrated feasibility frequency. |
 | H10 | Verified demo | Dated ledger, actual-day interest, Decimal cents. |
 | H11 | Verified core | Debounced backend requests; stale guards inspected. |
-| H12 | Verified illustrative | Stage stress/yield and heat dates. |
+| H12 | Verified illustrative | Date-positioned heat event changes stage features and illustrative yield; API/UI baseline and changed-stage flow verified. |
 | H13 | Verified simulated | Capped bridge draws and carried/repaid informal debt. |
 | H14 | Verified simulated | Three-season cash/arrears; no duplicate principal. |
 | H15 | Verified demo | Two different proposal schedules, costs/eligibility tests. |
@@ -52,6 +52,10 @@ F0 documentation deliverables are recorded in [`FULL_EXPANSION_STATUS.md`](FULL_
 
 Post-hackathon phase status is recorded in [`docs/PHASE_F1_F4_IMPLEMENTATION.md`](docs/PHASE_F1_F4_IMPLEMENTATION.md). The F1–F3 branch does not include F4; its stage model and model training are deferred.
 
+## Dated weather and crop stage issue
+
+Implemented: `GET /api/crop-calendar`; calendar provenance and bounded windows; date-based hypothetical heat placement; ERA5 daily stage aggregates for overlapping Pune dates only; `as_of` cutoff; explicit missing geography/date states; versioned illustrative yield metadata. The default 2026 Nashik demo has no geography match for the Pune ERA5 grid, and its season also does not overlap the 2015 archive; both remain visibly missing. No historical yield baseline/model is available because aligned, admitted yield rows are absent. API suite: 20 tests pass. Frontend production build passes. Browser check: baseline flowering heat vs July 1 planting heat changed stage stress and projected yield (3.05 to 3.14 t/ha) through the UI.
+
 ## Limits
 
-No matched observed environmental/market/repayment dataset. A full historical weather reanalysis archive is retained and not runtime-ingested. A three-row excerpt remains only as outage fallback. Crop rules/calendar are illustrative. No real credit decision or restructuring. Existing stack uses custom CSS, sqlite3 and state navigation. Nested Pydantic objects remain dictionaries. PDF output and a video backup remain unverified/unavailable.
+No admitted aligned yield/weather/market/repayment dataset. ERA5 features are conditionally aligned for matching Pune dates, but do not drive or calibrate the illustrative yield rule. Default 2026 scenarios have missing ERA5 date coverage. A three-row excerpt remains only as source-monitor outage fallback. Crop rules/calendar are illustrative. No real credit decision or restructuring. Existing stack uses custom CSS, sqlite3 and state navigation. Nested Pydantic objects remain dictionaries. PDF output and a video backup remain unverified/unavailable.
