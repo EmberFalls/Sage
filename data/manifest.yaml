@@ -1,26 +1,115 @@
-version: 1
-retrieved_at: null
+version: 2
+manifest_updated_at: '2026-10-09'
+pilot_scope:
+  country: India
+  state: Maharashtra
+  district: Pune
+  crop: maize
+  season: Kharif 2015
+  status: scope_target_only
+  note: >-
+    A pilot target for source feasibility, not a claim that matched yield,
+    satellite, price, or farm-level observations exist. The only captured
+    real sample is grid-cell historical weather; the demo remains synthetic.
+baseline:
+  demo_fixture: demo-fixture-2026-10-09.2
+  engine: risk-engine-v2-demo.2
+  crop_rules: illustrative-v2
+  warning_rules: backend/app/config/warnings.json
+  warning_rules_version: inspect-file-version-before-upgrade
+  seed: 20261009
+  preservation_rule: >-
+    Keep the current seeded offline demo and its outputs reproducible. Any
+    source/model/rule change must version the baseline and record the reason;
+    never silently rewrite historical snapshots.
 sources:
   - id: synthetic-demo-ledger
     type: synthetic
     label: Synthetic borrower, loan, and repayment demo records
     status: simulated
-    verified_bytes: false
-  - id: hypothetical-weather
-    type: assumed
-    label: User-controlled hypothetical weather stress
-    status: assumed
-    verified_bytes: false
-  - id: crop-rules-demo
-    type: assumed
-    label: Illustrative crop calendar and yield response
-    status: assumed
-    verified_bytes: false
+    verified_bytes: true
+    local_path: backend/app/services/fixtures.py
+    seed: 20261009
+    claims: synthetic examples only; no real borrower or bank outcomes
+  - id: open-meteo-pune-historical-sample
+    type: reanalysis_sample
+    label: Open-Meteo historical daily weather sample for Pune grid cell
+    status: sample_verified_not_ingested
+    verified_bytes: true
+    url: https://archive-api.open-meteo.com/v1/archive
+    docs_url: https://open-meteo.com/en/docs/historical-weather-api
+    request:
+      latitude: 18.5204
+      longitude: 73.8567
+      start_date: '2015-06-01'
+      end_date: '2015-10-31'
+      daily: [precipitation_sum, temperature_2m_max, temperature_2m_min]
+      timezone: Asia/Kolkata
+      authentication: none
+    response_location:
+      latitude: 18.523726
+      longitude: 73.86876
+      elevation_m: 561
+      timezone: Asia/Kolkata
+    units: {precipitation_sum: mm, temperature_2m_max: '°C', temperature_2m_min: '°C'}
+    sample_path: data/raw/open_meteo/pune_kharif_2015_sample.json
+    sample_kind: excerpt_of_successful_api_response
+    captured_at: '2026-10-09'
+    license: CC-BY-4.0 for data; free API restricted to non-commercial use
+    attribution: Open-Meteo.com
+    sha256: D239158776E1277E2370E40DEDC96B25167AB4D41FC4CE0A13E55C6958E39ADD
+    limitations: >-
+      Reanalysis/grid-cell context, not a weather-station observation or farm
+      measurement. Sample excerpt is not a complete season archive and is not
+      wired into runtime assessments. Commercial use requires a suitable paid
+      API plan. It is not a crop/yield/satellite/price join.
+  - id: cybench
+    type: observed_research_candidate
+    label: CY-Bench
+    status: public_metadata_reviewed_archive_uninspected
+    url: https://zenodo.org/records/13838912
+    version: '1.2'
+    license: unverified_record_and_archive_terms
+    archive_downloaded: false
+    sha256: null
+    note: >-
+      Record version/archive sizes were reviewed, but the rendered record did
+      not expose a license value and India maize/Pune rows/geographic keys have
+      not been inspected in the archive. Not used until verified.
+  - id: agmarknet
+    type: public_market_candidate
+    label: AGMARKNET
+    status: public_portal_api_unverified
+    url: https://agmarknet.gov.in/home
+    sha256: null
+    note: No authenticated/anonymous endpoint, price rows, crop-market mapping, or licence scope verified.
   - id: ndvi
     type: satellite
     label: NDVI
     status: unavailable
+    verified_bytes: false
   - id: soil-moisture
     type: soil
     label: Soil moisture
     status: unavailable
+    verified_bytes: false
+  - id: crop-calendar-yield-price
+    type: agronomic_market
+    label: Pune maize crop calendar, yield history, and local price
+    status: missing_matched_observations
+    verified_bytes: false
+    note: >-
+      No source-backed sample with aligned district, crop, units, and season
+      has been admitted for this pilot scope.
+  - id: hypothetical-weather
+    type: assumed
+    label: User-controlled hypothetical weather stress used by the demo
+    status: assumed
+    verified_bytes: true
+    local_path: frontend/src/App.tsx
+  - id: crop-rules-demo
+    type: assumed
+    label: Illustrative crop calendar and yield response
+    status: assumed
+    verified_bytes: true
+    local_path: backend/app/services/fixtures.py
