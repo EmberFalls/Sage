@@ -1,0 +1,6 @@
+baseline 0e56861beb2171023d65 gap=0.00 bank_paid=125365.48 bridge=0.00
+heat 70068da237eb1b2453bf gap=52365.48 bank_paid=73000.00 bridge=0.00
+bridge 700fb432d4bba98baa26 gap=52365.48 bank_paid=125365.48 bridge=52365.48
+reschedule 43a2259d7d748a92d5c1 gap=0.00 bank_paid=126549.04 bridge=0.00
+split 8e8e46e48db243d1b2e4 gap=0.00 bank_paid=128133.63 bridge=0.00
+Live API and snapshot checks passed; schema captured.

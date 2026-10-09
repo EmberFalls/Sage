@@ -1,0 +1,170 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "borrower_id": {
+      "title": "Borrower Id",
+      "type": "string"
+    },
+    "scenario_id": {
+      "title": "Scenario Id",
+      "type": "string"
+    },
+    "input_hash": {
+      "title": "Input Hash",
+      "type": "string"
+    },
+    "comparison_context_hash": {
+      "title": "Comparison Context Hash",
+      "type": "string"
+    },
+    "engine_version": {
+      "title": "Engine Version",
+      "type": "string"
+    },
+    "assessment_as_of": {
+      "format": "date",
+      "title": "Assessment As Of",
+      "type": "string"
+    },
+    "source_versions": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "title": "Source Versions",
+      "type": "object"
+    },
+    "source_snapshot_ids": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Source Snapshot Ids",
+      "type": "array"
+    },
+    "frozen_context": {
+      "title": "Frozen Context",
+      "type": "object"
+    },
+    "scenario_request": {
+      "title": "Scenario Request",
+      "type": "object"
+    },
+    "claim_scope": {
+      "const": "synthetic_lending_scenario_conditional",
+      "title": "Claim Scope",
+      "type": "string"
+    },
+    "baseline": {
+      "title": "Baseline",
+      "type": "object"
+    },
+    "stress": {
+      "title": "Stress",
+      "type": "object"
+    },
+    "stress_with_action": {
+      "anyOf": [
+        {
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Stress With Action"
+    },
+    "action_status": {
+      "enum": [
+        "not_selected",
+        "simulated_proposal",
+        "ineligible"
+      ],
+      "title": "Action Status",
+      "type": "string"
+    },
+    "action_candidates": {
+      "items": {
+        "type": "object"
+      },
+      "title": "Action Candidates",
+      "type": "array"
+    },
+    "comparison_deltas": {
+      "title": "Comparison Deltas",
+      "type": "object"
+    },
+    "repayment_bridge": {
+      "title": "Repayment Bridge",
+      "type": "object"
+    },
+    "debt_cycle": {
+      "items": {
+        "type": "object"
+      },
+      "title": "Debt Cycle",
+      "type": "array"
+    },
+    "debt_warnings": {
+      "items": {
+        "type": "object"
+      },
+      "title": "Debt Warnings",
+      "type": "array"
+    },
+    "input_data_status": {
+      "additionalProperties": {
+        "items": {
+          "type": "string"
+        },
+        "type": "array"
+      },
+      "title": "Input Data Status",
+      "type": "object"
+    },
+    "risk_semantics": {
+      "title": "Risk Semantics",
+      "type": "string"
+    },
+    "drivers": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Drivers",
+      "type": "array"
+    },
+    "warnings": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Warnings",
+      "type": "array"
+    }
+  },
+  "required": [
+    "borrower_id",
+    "scenario_id",
+    "input_hash",
+    "comparison_context_hash",
+    "engine_version",
+    "assessment_as_of",
+    "source_versions",
+    "source_snapshot_ids",
+    "frozen_context",
+    "scenario_request",
+    "claim_scope",
+    "baseline",
+    "stress",
+    "stress_with_action",
+    "action_status",
+    "action_candidates",
+    "comparison_deltas",
+    "repayment_bridge",
+    "debt_cycle",
+    "debt_warnings",
+    "input_data_status",
+    "risk_semantics",
+    "drivers",
+    "warnings"
+  ],
+  "title": "ScenarioBundle",
+  "type": "object"
+}

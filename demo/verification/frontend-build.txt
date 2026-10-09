@@ -1,0 +1,13 @@
+
+> phenocredit-demo@0.1.0 build
+> tsc -b && vite build
+
+vite v6.0.7 building for production...
+transforming...
+✓ 1578 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                   0.43 kB │ gzip:  0.30 kB
+dist/assets/index-ibnarOcF.css   24.70 kB │ gzip:  6.05 kB
+dist/assets/index-DI4WufIf.js   206.31 kB │ gzip: 62.56 kB
+✓ built in 1.31s

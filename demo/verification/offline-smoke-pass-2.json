@@ -1,0 +1,22 @@
+{
+  "status": "passed",
+  "api": "http://127.0.0.1:8000",
+  "requests": "loopback only; no external source service called",
+  "checks": [
+    "health and idempotent seed",
+    "borrower, loan and source provenance",
+    "deterministic cloned assessment",
+    "heat timing and stage sensitivity",
+    "bridge versus formal/total debt",
+    "two aligned interventions",
+    "saved report reopen and loan schedule",
+    "saved catalog",
+    "missing data labels"
+  ],
+  "scenario_ids": [
+    "0e56861beb2171023d65",
+    "70068da237eb1b2453bf",
+    "cea796fda8c6b9df14a8",
+    "9abd4984d5b3f679f435"
+  ]
+}

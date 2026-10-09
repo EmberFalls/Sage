@@ -1,0 +1,23 @@
+test_g0_health_seed_and_typed_contract (app.tests.test_gates.GateVerification.test_g0_health_seed_and_typed_contract) ... ok
+test_g1_db_records_sources_and_chronological_loan (app.tests.test_gates.GateVerification.test_g1_db_records_sources_and_chronological_loan) ... ok
+test_g2_all_inputs_and_honest_missing_status (app.tests.test_gates.GateVerification.test_g2_all_inputs_and_honest_missing_status) ... ok
+test_g2_interest_uses_actual_days (app.tests.test_gates.GateVerification.test_g2_interest_uses_actual_days) ... ok
+test_g2_ledger_and_revenue_units (app.tests.test_gates.GateVerification.test_g2_ledger_and_revenue_units) ... ok
+test_g3_bridge_reconciles_at_paise (app.tests.test_gates.GateVerification.test_g3_bridge_reconciles_at_paise) ... ok
+test_g3_post_due_sale_excluded_and_price_changes_bridge (app.tests.test_gates.GateVerification.test_g3_post_due_sale_excluded_and_price_changes_bridge) ... ok
+test_g3_reset_reproducibility_and_frozen_baseline (app.tests.test_gates.GateVerification.test_g3_reset_reproducibility_and_frozen_baseline) ... ok
+test_g3_stage_changes_features_yield_and_event_dates (app.tests.test_gates.GateVerification.test_g3_stage_changes_features_yield_and_event_dates) ... ok
+test_g4_both_actions_same_shock_and_full_schedule (app.tests.test_gates.GateVerification.test_g4_both_actions_same_shock_and_full_schedule) ... ok
+test_g4_bridge_can_pay_bank_without_erasing_liability (app.tests.test_gates.GateVerification.test_g4_bridge_can_pay_bank_without_erasing_liability) ... ok
+test_g4_ineligible_action_has_no_result (app.tests.test_gates.GateVerification.test_g4_ineligible_action_has_no_result) ... ok
+test_g4_paid_principal_is_not_readded (app.tests.test_gates.GateVerification.test_g4_paid_principal_is_not_readded) ... ok
+test_g5_older_immutable_snapshot_reopens_from_saved_request (app.tests.test_gates.GateVerification.test_g5_older_immutable_snapshot_reopens_from_saved_request) ... ok
+test_g5_saved_snapshot_catalog_and_reopen_request (app.tests.test_gates.GateVerification.test_g5_saved_snapshot_catalog_and_reopen_request) ... ok
+test_g5_snapshot_freezes_custom_context_when_borrower_changes (app.tests.test_gates.GateVerification.test_g5_snapshot_freezes_custom_context_when_borrower_changes) ... ok
+test_invalid_requests_fail_with_typed_errors (app.tests.test_gates.GateVerification.test_invalid_requests_fail_with_typed_errors) ... ok
+test_saved_reopen_and_loan_use_same_selected_snapshot (app.tests.test_gates.GateVerification.test_saved_reopen_and_loan_use_same_selected_snapshot) ... ok
+
+----------------------------------------------------------------------
+Ran 18 tests in 0.544s
+
+OK

@@ -1,0 +1,26 @@
+version: 1
+retrieved_at: null
+sources:
+  - id: synthetic-demo-ledger
+    type: synthetic
+    label: Synthetic borrower, loan, and repayment demo records
+    status: simulated
+    verified_bytes: false
+  - id: hypothetical-weather
+    type: assumed
+    label: User-controlled hypothetical weather stress
+    status: assumed
+    verified_bytes: false
+  - id: crop-rules-demo
+    type: assumed
+    label: Illustrative crop calendar and yield response
+    status: assumed
+    verified_bytes: false
+  - id: ndvi
+    type: satellite
+    label: NDVI
+    status: unavailable
+  - id: soil-moisture
+    type: soil
+    label: Soil moisture
+    status: unavailable

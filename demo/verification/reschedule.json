@@ -1,0 +1,1594 @@
+{
+  "borrower_id": "B-DEMO-001",
+  "scenario_id": "43a2259d7d748a92d5c1",
+  "input_hash": "43a2259d7d748a92d5c1f69efaceb2b42ab9627564ee93d3e32aac552dd740ca",
+  "comparison_context_hash": "7e1209895a000d84c00ef50823fc03f722d2549417406c8ab42ab0ac19e32752",
+  "engine_version": "risk-engine-v2-demo.2",
+  "assessment_as_of": "2026-10-09",
+  "source_versions": {
+    "demo_fixture": "demo-fixture-2026-10-09.2",
+    "engine": "risk-engine-v2-demo.2",
+    "crop_rules": "illustrative-v2",
+    "warnings": "warnings-demo-v1"
+  },
+  "source_snapshot_ids": [
+    "demo-fixture-2026-10-09.2"
+  ],
+  "frozen_context": {
+    "borrower": {
+      "alias": "Demo Farmer 001",
+      "annual_rate": "0.12",
+      "area_ha": 2.4,
+      "branch": "Nashik Rural",
+      "credit_history": [
+        {
+          "season": "2023/24",
+          "source_status": "synthetic_demo_record",
+          "status": "on_time"
+        },
+        {
+          "season": "2024/25",
+          "source_status": "synthetic_demo_record",
+          "status": "on_time"
+        }
+      ],
+      "crop": "Wheat",
+      "disbursed_at": "2026-06-22",
+      "district": "Nashik",
+      "due_at": "2026-11-05",
+      "harvest_date": "2026-11-01",
+      "id": "B-DEMO-001",
+      "initial_cash_inr": "18000",
+      "input_cost_inr": "53000",
+      "irrigation_fraction": 0.45,
+      "land_class": "smallholder",
+      "living_cost_inr": "12000",
+      "loan_principal_inr": "120000",
+      "price_inr_per_quintal": "2450",
+      "sale_fraction": "0.92",
+      "sowing_date": "2026-06-20",
+      "synthetic": true,
+      "yield_t_per_ha": "3.2"
+    },
+    "as_of": "2026-10-09",
+    "seed": 20261009,
+    "sources": {
+      "demo_fixture": "demo-fixture-2026-10-09.2",
+      "engine": "risk-engine-v2-demo.2",
+      "crop_rules": "illustrative-v2",
+      "warnings": "warnings-demo-v1"
+    }
+  },
+  "scenario_request": {
+    "borrower_id": "B-DEMO-001",
+    "as_of": "2026-10-09",
+    "overrides": {
+      "rainfall_change_pct": 0.0,
+      "heatwave_days": 4,
+      "heatwave_growth_stage": "flowering",
+      "market_price_change_pct": 0.0,
+      "irrigation_fraction": null,
+      "assumed_informal_bridge_inr": 0.0
+    },
+    "action_id": "reschedule_30d"
+  },
+  "claim_scope": "synthetic_lending_scenario_conditional",
+  "baseline": {
+    "opening_cash_inr": "18000.00",
+    "cash_by_date": [
+      {
+        "date": "2026-06-22",
+        "kind": "loan_disbursement",
+        "amount_inr": "120000.00",
+        "cash_after_inr": "138000.00"
+      },
+      {
+        "date": "2026-06-28",
+        "kind": "crop_inputs",
+        "amount_inr": "-53000.00",
+        "cash_after_inr": "85000.00"
+      },
+      {
+        "date": "2026-11-01",
+        "kind": "crop_sale",
+        "amount_inr": "173107.20",
+        "cash_after_inr": "258107.20"
+      },
+      {
+        "date": "2026-11-02",
+        "kind": "household_expense",
+        "amount_inr": "-12000.00",
+        "cash_after_inr": "246107.20"
+      },
+      {
+        "date": "2026-11-05",
+        "kind": "bank_payment",
+        "amount_inr": "-125365.48",
+        "cash_after_inr": "120741.72",
+        "scheduled_due_inr": "125365.48"
+      }
+    ],
+    "payments": [
+      {
+        "date": "2026-11-05",
+        "cash_before_due_inr": "246107.20",
+        "bank_due_inr": "125365.48",
+        "cash_gap_inr": "0.00",
+        "informal_draw_inr": "0.00",
+        "formal_paid_inr": "125365.48",
+        "unmet_due_inr": "0.00",
+        "cash_after_due_inr": "120741.72"
+      }
+    ],
+    "cash_pre_due_inr": "246107.20",
+    "due_inr": "125365.48",
+    "cash_gap_inr": "0.00",
+    "cash_gap_total_inr": "0.00",
+    "formal_paid_inr": "125365.48",
+    "formal_balance_end_inr": "0.00",
+    "bridge_draw_inr": "0.00",
+    "informal_balance_end_inr": "0.00",
+    "informal_interest_inr": "0.00",
+    "informal_paid_inr": "0.00",
+    "net_free_cash_inr": "120741.72",
+    "bank_total_due_inr": "125365.48",
+    "season_end": "2026-11-12",
+    "yield_t_per_ha": "3.2000",
+    "production_tonnes": "7.68000",
+    "price_inr_per_quintal": "2450.00",
+    "gross_revenue_inr": "173107.20",
+    "sale_date": "2026-11-01",
+    "due_date": "2026-11-05",
+    "contractual_due_inr": "125365.48",
+    "loan_schedule": [
+      {
+        "date": "2026-11-05",
+        "amount_inr": "125365.48"
+      }
+    ],
+    "action_cost_inr": "0.00",
+    "action_id": "none",
+    "stage_stress": {
+      "planting": 0.0,
+      "vegetative": 0.0,
+      "flowering": 0.0,
+      "grain_fill": 0.0,
+      "harvest": 0.0
+    },
+    "crop_stages": [
+      {
+        "name": "planting",
+        "start_date": "2026-06-20",
+        "end_date": "2026-07-14",
+        "calendar_status": "assumed"
+      },
+      {
+        "name": "vegetative",
+        "start_date": "2026-07-15",
+        "end_date": "2026-08-13",
+        "calendar_status": "assumed"
+      },
+      {
+        "name": "flowering",
+        "start_date": "2026-08-14",
+        "end_date": "2026-09-03",
+        "calendar_status": "assumed"
+      },
+      {
+        "name": "grain_fill",
+        "start_date": "2026-09-04",
+        "end_date": "2026-10-10",
+        "calendar_status": "assumed"
+      },
+      {
+        "name": "harvest",
+        "start_date": "2026-10-11",
+        "end_date": "2026-11-01",
+        "calendar_status": "assumed"
+      }
+    ],
+    "heat_event": {
+      "stage": "flowering",
+      "start_date": null,
+      "end_date": null,
+      "duration_days": 0
+    },
+    "fin03_inputs": {
+      "satellite": {
+        "name": "NDVI / FPAR",
+        "value": null,
+        "unit": "index",
+        "status": "unavailable",
+        "source": null
+      },
+      "weather_forecast": {
+        "rainfall_change_pct": 0,
+        "heatwave_days": 0,
+        "heatwave_growth_stage": "flowering",
+        "status": "hypothetical_scenario",
+        "issued_at": null
+      },
+      "soil": {
+        "name": "Soil moisture",
+        "value": null,
+        "unit": "volumetric fraction",
+        "status": "unavailable"
+      },
+      "crop": {
+        "name": "Wheat",
+        "area_ha": 2.4,
+        "season_start": "2026-06-20",
+        "season_end": "2026-11-01",
+        "status": "synthetic_borrower_assumption"
+      },
+      "irrigation": {
+        "fraction": 0.45,
+        "unit": "fraction of area",
+        "status": "synthetic_borrower_input"
+      },
+      "yield_history": {
+        "baseline_t_per_ha": "3.2",
+        "projected_t_per_ha": "3.2000",
+        "unit": "tonnes/hectare",
+        "status": "assumed_illustrative_response",
+        "historical_observations": null
+      },
+      "market_price": {
+        "inr_per_quintal": "2450.00",
+        "unit": "INR/quintal",
+        "status": "assumed_demo_input",
+        "observed_at": null
+      },
+      "credit_history": {
+        "events": [
+          {
+            "season": "2023/24",
+            "source_status": "synthetic_demo_record",
+            "status": "on_time"
+          },
+          {
+            "season": "2024/25",
+            "source_status": "synthetic_demo_record",
+            "status": "on_time"
+          }
+        ],
+        "status": "synthetic_demo_records",
+        "observed_bank_data": false
+      }
+    },
+    "source_status": {
+      "satellite": "unavailable",
+      "weather_forecast": "hypothetical_scenario",
+      "soil": "unavailable",
+      "crop": "synthetic_borrower_assumption",
+      "irrigation": "synthetic_borrower_input",
+      "yield_history": "assumed_illustrative_response",
+      "market_price": "assumed_demo_input",
+      "credit_history": "synthetic_demo_records"
+    },
+    "repayment_probability_simulated": "1.0000",
+    "p_shortfall": "0.0000",
+    "probability_basis": {
+      "paths": 21,
+      "repaid_paths": 21,
+      "shortfall_paths": 0,
+      "type": "equally_weighted_hypothetical_paths",
+      "yield_range": "\u00b120%",
+      "price_range": "\u00b110%",
+      "calibrated": false
+    },
+    "formal_repayment_status": "simulated_due_satisfied",
+    "debt_cycle": [
+      {
+        "season": 1,
+        "climate_shock": false,
+        "yield_t_per_ha": "3.2000",
+        "gross_revenue_inr": "173107.20",
+        "opening_total_debt_inr": "120000.00",
+        "cash_before_due_inr": "246107.20",
+        "bank_due_inr": "125365.48",
+        "formal_paid_inr": "125365.48",
+        "informal_draw_inr": "0.00",
+        "formal_balance_end_inr": "0.00",
+        "informal_balance_end_inr": "0.00",
+        "total_debt_end_inr": "0.00",
+        "net_free_cash_inr": "120741.72",
+        "cash_gap_inr": "0.00",
+        "unmet_due_inr": "0.00",
+        "interest_paid_inr": "0.00",
+        "action_cost_inr": "0.00",
+        "cash_by_date": [
+          {
+            "date": "2026-06-22",
+            "kind": "loan_disbursement",
+            "amount_inr": "120000.00",
+            "cash_after_inr": "138000.00"
+          },
+          {
+            "date": "2026-06-28",
+            "kind": "crop_inputs",
+            "amount_inr": "-53000.00",
+            "cash_after_inr": "85000.00"
+          },
+          {
+            "date": "2026-11-01",
+            "kind": "crop_sale",
+            "amount_inr": "173107.20",
+            "cash_after_inr": "258107.20"
+          },
+          {
+            "date": "2026-11-02",
+            "kind": "household_expense",
+            "amount_inr": "-12000.00",
+            "cash_after_inr": "246107.20"
+          },
+          {
+            "date": "2026-11-05",
+            "kind": "bank_payment",
+            "amount_inr": "-125365.48",
+            "cash_after_inr": "120741.72",
+            "scheduled_due_inr": "125365.48"
+          }
+        ],
+        "payments": [
+          {
+            "date": "2026-11-05",
+            "cash_before_due_inr": "246107.20",
+            "bank_due_inr": "125365.48",
+            "cash_gap_inr": "0.00",
+            "informal_draw_inr": "0.00",
+            "formal_paid_inr": "125365.48",
+            "unmet_due_inr": "0.00",
+            "cash_after_due_inr": "120741.72"
+          }
+        ],
+        "simulation_only": true
+      },
+      {
+        "season": 2,
+        "climate_shock": false,
+        "yield_t_per_ha": "3.2000",
+        "gross_revenue_inr": "173107.20",
+        "opening_total_debt_inr": "120000.00",
+        "cash_before_due_inr": "348848.92",
+        "bank_due_inr": "125365.48",
+        "formal_paid_inr": "125365.48",
+        "informal_draw_inr": "0.00",
+        "formal_balance_end_inr": "0.00",
+        "informal_balance_end_inr": "0.00",
+        "total_debt_end_inr": "0.00",
+        "net_free_cash_inr": "223483.44",
+        "cash_gap_inr": "0.00",
+        "unmet_due_inr": "0.00",
+        "interest_paid_inr": "0.00",
+        "action_cost_inr": "0.00",
+        "cash_by_date": [
+          {
+            "date": "2027-06-22",
+            "kind": "loan_disbursement",
+            "amount_inr": "120000.00",
+            "cash_after_inr": "240741.72"
+          },
+          {
+            "date": "2027-06-28",
+            "kind": "crop_inputs",
+            "amount_inr": "-53000.00",
+            "cash_after_inr": "187741.72"
+          },
+          {
+            "date": "2027-11-01",
+            "kind": "crop_sale",
+            "amount_inr": "173107.20",
+            "cash_after_inr": "360848.92"
+          },
+          {
+            "date": "2027-11-02",
+            "kind": "household_expense",
+            "amount_inr": "-12000.00",
+            "cash_after_inr": "348848.92"
+          },
+          {
+            "date": "2027-11-05",
+            "kind": "bank_payment",
+            "amount_inr": "-125365.48",
+            "cash_after_inr": "223483.44",
+            "scheduled_due_inr": "125365.48"
+          }
+        ],
+        "payments": [
+          {
+            "date": "2027-11-05",
+            "cash_before_due_inr": "348848.92",
+            "bank_due_inr": "125365.48",
+            "cash_gap_inr": "0.00",
+            "informal_draw_inr": "0.00",
+            "formal_paid_inr": "125365.48",
+            "unmet_due_inr": "0.00",
+            "cash_after_due_inr": "223483.44"
+          }
+        ],
+        "simulation_only": true
+      },
+      {
+        "season": 3,
+        "climate_shock": false,
+        "yield_t_per_ha": "3.2000",
+        "gross_revenue_inr": "173107.20",
+        "opening_total_debt_inr": "120000.00",
+        "cash_before_due_inr": "451590.64",
+        "bank_due_inr": "125365.48",
+        "formal_paid_inr": "125365.48",
+        "informal_draw_inr": "0.00",
+        "formal_balance_end_inr": "0.00",
+        "informal_balance_end_inr": "0.00",
+        "total_debt_end_inr": "0.00",
+        "net_free_cash_inr": "326225.16",
+        "cash_gap_inr": "0.00",
+        "unmet_due_inr": "0.00",
+        "interest_paid_inr": "0.00",
+        "action_cost_inr": "0.00",
+        "cash_by_date": [
+          {
+            "date": "2028-06-21",
+            "kind": "loan_disbursement",
+            "amount_inr": "120000.00",
+            "cash_after_inr": "343483.44"
+          },
+          {
+            "date": "2028-06-27",
+            "kind": "crop_inputs",
+            "amount_inr": "-53000.00",
+            "cash_after_inr": "290483.44"
+          },
+          {
+            "date": "2028-10-31",
+            "kind": "crop_sale",
+            "amount_inr": "173107.20",
+            "cash_after_inr": "463590.64"
+          },
+          {
+            "date": "2028-11-01",
+            "kind": "household_expense",
+            "amount_inr": "-12000.00",
+            "cash_after_inr": "451590.64"
+          },
+          {
+            "date": "2028-11-04",
+            "kind": "bank_payment",
+            "amount_inr": "-125365.48",
+            "cash_after_inr": "326225.16",
+            "scheduled_due_inr": "125365.48"
+          }
+        ],
+        "payments": [
+          {
+            "date": "2028-11-04",
+            "cash_before_due_inr": "451590.64",
+            "bank_due_inr": "125365.48",
+            "cash_gap_inr": "0.00",
+            "informal_draw_inr": "0.00",
+            "formal_paid_inr": "125365.48",
+            "unmet_due_inr": "0.00",
+            "cash_after_due_inr": "326225.16"
+          }
+        ],
+        "simulation_only": true
+      }
+    ],
+    "comparison_context_hash": "7e1209895a000d84c00ef50823fc03f722d2549417406c8ab42ab0ac19e32752",
+    "three_season_action_cost_inr": "0.00",
+    "modeled_sustainability_status": "self_funded_payments"
+  },
+  "stress": {
+    "opening_cash_inr": "18000.00",
+    "cash_by_date": [
+      {
+        "date": "2026-06-22",
+        "kind": "loan_disbursement",
+        "amount_inr": "120000.00",
+        "cash_after_inr": "138000.00"
+      },
+      {
+        "date": "2026-06-28",
+        "kind": "crop_inputs",
+        "amount_inr": "-53000.00",
+        "cash_after_inr": "85000.00"
+      },
+      {
+        "date": "2026-11-02",
+        "kind": "household_expense",
+        "amount_inr": "-12000.00",
+        "cash_after_inr": "73000.00"
+      },
+      {
+        "date": "2026-11-05",
+        "kind": "bank_payment",
+        "amount_inr": "-73000.00",
+        "cash_after_inr": "0.00",
+        "scheduled_due_inr": "125365.48"
+      },
+      {
+        "date": "2026-11-09",
+        "kind": "crop_sale",
+        "amount_inr": "164798.05",
+        "cash_after_inr": "164798.05"
+      }
+    ],
+    "payments": [
+      {
+        "date": "2026-11-05",
+        "cash_before_due_inr": "73000.00",
+        "bank_due_inr": "125365.48",
+        "cash_gap_inr": "52365.48",
+        "informal_draw_inr": "0.00",
+        "formal_paid_inr": "73000.00",
+        "unmet_due_inr": "52365.48",
+        "cash_after_due_inr": "0.00"
+      }
+    ],
+    "cash_pre_due_inr": "73000.00",
+    "due_inr": "125365.48",
+    "cash_gap_inr": "52365.48",
+    "cash_gap_total_inr": "52365.48",
+    "formal_paid_inr": "73000.00",
+    "formal_balance_end_inr": "52365.48",
+    "bridge_draw_inr": "0.00",
+    "informal_balance_end_inr": "0.00",
+    "informal_interest_inr": "0.00",
+    "informal_paid_inr": "0.00",
+    "net_free_cash_inr": "164798.05",
+    "bank_total_due_inr": "125365.48",
+    "season_end": "2026-11-16",
+    "yield_t_per_ha": "3.0464",
+    "production_tonnes": "7.31136",
+    "price_inr_per_quintal": "2450.00",
+    "gross_revenue_inr": "164798.05",
+    "sale_date": "2026-11-09",
+    "due_date": "2026-11-05",
+    "contractual_due_inr": "125365.48",
+    "loan_schedule": [
+      {
+        "date": "2026-11-05",
+        "amount_inr": "125365.48"
+      }
+    ],
+    "action_cost_inr": "0.00",
+    "action_id": "none",
+    "stage_stress": {
+      "planting": 0.0,
+      "vegetative": 0.0,
+      "flowering": 0.2,
+      "grain_fill": 0.0,
+      "harvest": 0.0
+    },
+    "crop_stages": [
+      {
+        "name": "planting",
+        "start_date": "2026-06-20",
+        "end_date": "2026-07-14",
+        "calendar_status": "assumed"
+      },
+      {
+        "name": "vegetative",
+        "start_date": "2026-07-15",
+        "end_date": "2026-08-13",
+        "calendar_status": "assumed"
+      },
+      {
+        "name": "flowering",
+        "start_date": "2026-08-14",
+        "end_date": "2026-09-03",
+        "calendar_status": "assumed"
+      },
+      {
+        "name": "grain_fill",
+        "start_date": "2026-09-04",
+        "end_date": "2026-10-10",
+        "calendar_status": "assumed"
+      },
+      {
+        "name": "harvest",
+        "start_date": "2026-10-11",
+        "end_date": "2026-11-01",
+        "calendar_status": "assumed"
+      }
+    ],
+    "heat_event": {
+      "stage": "flowering",
+      "start_date": "2026-08-14",
+      "end_date": "2026-08-17",
+      "duration_days": 4
+    },
+    "fin03_inputs": {
+      "satellite": {
+        "name": "NDVI / FPAR",
+        "value": null,
+        "unit": "index",
+        "status": "unavailable",
+        "source": null
+      },
+      "weather_forecast": {
+        "rainfall_change_pct": 0,
+        "heatwave_days": 4,
+        "heatwave_growth_stage": "flowering",
+        "status": "hypothetical_scenario",
+        "issued_at": null
+      },
+      "soil": {
+        "name": "Soil moisture",
+        "value": null,
+        "unit": "volumetric fraction",
+        "status": "unavailable"
+      },
+      "crop": {
+        "name": "Wheat",
+        "area_ha": 2.4,
+        "season_start": "2026-06-20",
+        "season_end": "2026-11-01",
+        "status": "synthetic_borrower_assumption"
+      },
+      "irrigation": {
+        "fraction": 0.45,
+        "unit": "fraction of area",
+        "status": "synthetic_borrower_input"
+      },
+      "yield_history": {
+        "baseline_t_per_ha": "3.2",
+        "projected_t_per_ha": "3.0464",
+        "unit": "tonnes/hectare",
+        "status": "assumed_illustrative_response",
+        "historical_observations": null
+      },
+      "market_price": {
+        "inr_per_quintal": "2450.00",
+        "unit": "INR/quintal",
+        "status": "assumed_demo_input",
+        "observed_at": null
+      },
+      "credit_history": {
+        "events": [
+          {
+            "season": "2023/24",
+            "source_status": "synthetic_demo_record",
+            "status": "on_time"
+          },
+          {
+            "season": "2024/25",
+            "source_status": "synthetic_demo_record",
+            "status": "on_time"
+          }
+        ],
+        "status": "synthetic_demo_records",
+        "observed_bank_data": false
+      }
+    },
+    "source_status": {
+      "satellite": "unavailable",
+      "weather_forecast": "hypothetical_scenario",
+      "soil": "unavailable",
+      "crop": "synthetic_borrower_assumption",
+      "irrigation": "synthetic_borrower_input",
+      "yield_history": "assumed_illustrative_response",
+      "market_price": "assumed_demo_input",
+      "credit_history": "synthetic_demo_records"
+    },
+    "repayment_probability_simulated": "0.0000",
+    "p_shortfall": "1.0000",
+    "probability_basis": {
+      "paths": 21,
+      "repaid_paths": 0,
+      "shortfall_paths": 21,
+      "type": "equally_weighted_hypothetical_paths",
+      "yield_range": "\u00b120%",
+      "price_range": "\u00b110%",
+      "calibrated": false
+    },
+    "formal_repayment_status": "simulated_unpaid_due",
+    "debt_cycle": [
+      {
+        "season": 1,
+        "climate_shock": true,
+        "yield_t_per_ha": "3.0464",
+        "gross_revenue_inr": "164798.05",
+        "opening_total_debt_inr": "120000.00",
+        "cash_before_due_inr": "73000.00",
+        "bank_due_inr": "125365.48",
+        "formal_paid_inr": "73000.00",
+        "informal_draw_inr": "0.00",
+        "formal_balance_end_inr": "52365.48",
+        "informal_balance_end_inr": "0.00",
+        "total_debt_end_inr": "52365.48",
+        "net_free_cash_inr": "164798.05",
+        "cash_gap_inr": "52365.48",
+        "unmet_due_inr": "52365.48",
+        "interest_paid_inr": "0.00",
+        "action_cost_inr": "0.00",
+        "cash_by_date": [
+          {
+            "date": "2026-06-22",
+            "kind": "loan_disbursement",
+            "amount_inr": "120000.00",
+            "cash_after_inr": "138000.00"
+          },
+          {
+            "date": "2026-06-28",
+            "kind": "crop_inputs",
+            "amount_inr": "-53000.00",
+            "cash_after_inr": "85000.00"
+          },
+          {
+            "date": "2026-11-02",
+            "kind": "household_expense",
+            "amount_inr": "-12000.00",
+            "cash_after_inr": "73000.00"
+          },
+          {
+            "date": "2026-11-05",
+            "kind": "bank_payment",
+            "amount_inr": "-73000.00",
+            "cash_after_inr": "0.00",
+            "scheduled_due_inr": "125365.48"
+          },
+          {
+            "date": "2026-11-09",
+            "kind": "crop_sale",
+            "amount_inr": "164798.05",
+            "cash_after_inr": "164798.05"
+          }
+        ],
+        "payments": [
+          {
+            "date": "2026-11-05",
+            "cash_before_due_inr": "73000.00",
+            "bank_due_inr": "125365.48",
+            "cash_gap_inr": "52365.48",
+            "informal_draw_inr": "0.00",
+            "formal_paid_inr": "73000.00",
+            "unmet_due_inr": "52365.48",
+            "cash_after_due_inr": "0.00"
+          }
+        ],
+        "simulation_only": true
+      },
+      {
+        "season": 2,
+        "climate_shock": true,
+        "yield_t_per_ha": "3.0464",
+        "gross_revenue_inr": "164798.05",
+        "opening_total_debt_inr": "172365.48",
+        "cash_before_due_inr": "219798.05",
+        "bank_due_inr": "184014.82",
+        "formal_paid_inr": "184014.82",
+        "informal_draw_inr": "0.00",
+        "formal_balance_end_inr": "0.00",
+        "informal_balance_end_inr": "0.00",
+        "total_debt_end_inr": "0.00",
+        "net_free_cash_inr": "200581.28",
+        "cash_gap_inr": "0.00",
+        "unmet_due_inr": "0.00",
+        "interest_paid_inr": "0.00",
+        "action_cost_inr": "0.00",
+        "cash_by_date": [
+          {
+            "date": "2027-06-22",
+            "kind": "loan_disbursement",
+            "amount_inr": "120000.00",
+            "cash_after_inr": "284798.05"
+          },
+          {
+            "date": "2027-06-28",
+            "kind": "crop_inputs",
+            "amount_inr": "-53000.00",
+            "cash_after_inr": "231798.05"
+          },
+          {
+            "date": "2027-11-02",
+            "kind": "household_expense",
+            "amount_inr": "-12000.00",
+            "cash_after_inr": "219798.05"
+          },
+          {
+            "date": "2027-11-05",
+            "kind": "bank_payment",
+            "amount_inr": "-184014.82",
+            "cash_after_inr": "35783.23",
+            "scheduled_due_inr": "184014.82"
+          },
+          {
+            "date": "2027-11-09",
+            "kind": "crop_sale",
+            "amount_inr": "164798.05",
+            "cash_after_inr": "200581.28"
+          }
+        ],
+        "payments": [
+          {
+            "date": "2027-11-05",
+            "cash_before_due_inr": "219798.05",
+            "bank_due_inr": "184014.82",
+            "cash_gap_inr": "0.00",
+            "informal_draw_inr": "0.00",
+            "formal_paid_inr": "184014.82",
+            "unmet_due_inr": "0.00",
+            "cash_after_due_inr": "35783.23"
+          }
+        ],
+        "simulation_only": true
+      },
+      {
+        "season": 3,
+        "climate_shock": true,
+        "yield_t_per_ha": "3.0464",
+        "gross_revenue_inr": "164798.05",
+        "opening_total_debt_inr": "120000.00",
+        "cash_before_due_inr": "255581.28",
+        "bank_due_inr": "125365.48",
+        "formal_paid_inr": "125365.48",
+        "informal_draw_inr": "0.00",
+        "formal_balance_end_inr": "0.00",
+        "informal_balance_end_inr": "0.00",
+        "total_debt_end_inr": "0.00",
+        "net_free_cash_inr": "295013.85",
+        "cash_gap_inr": "0.00",
+        "unmet_due_inr": "0.00",
+        "interest_paid_inr": "0.00",
+        "action_cost_inr": "0.00",
+        "cash_by_date": [
+          {
+            "date": "2028-06-21",
+            "kind": "loan_disbursement",
+            "amount_inr": "120000.00",
+            "cash_after_inr": "320581.28"
+          },
+          {
+            "date": "2028-06-27",
+            "kind": "crop_inputs",
+            "amount_inr": "-53000.00",
+            "cash_after_inr": "267581.28"
+          },
+          {
+            "date": "2028-11-01",
+            "kind": "household_expense",
+            "amount_inr": "-12000.00",
+            "cash_after_inr": "255581.28"
+          },
+          {
+            "date": "2028-11-04",
+            "kind": "bank_payment",
+            "amount_inr": "-125365.48",
+            "cash_after_inr": "130215.80",
+            "scheduled_due_inr": "125365.48"
+          },
+          {
+            "date": "2028-11-08",
+            "kind": "crop_sale",
+            "amount_inr": "164798.05",
+            "cash_after_inr": "295013.85"
+          }
+        ],
+        "payments": [
+          {
+            "date": "2028-11-04",
+            "cash_before_due_inr": "255581.28",
+            "bank_due_inr": "125365.48",
+            "cash_gap_inr": "0.00",
+            "informal_draw_inr": "0.00",
+            "formal_paid_inr": "125365.48",
+            "unmet_due_inr": "0.00",
+            "cash_after_due_inr": "130215.80"
+          }
+        ],
+        "simulation_only": true
+      }
+    ],
+    "comparison_context_hash": "7e1209895a000d84c00ef50823fc03f722d2549417406c8ab42ab0ac19e32752",
+    "three_season_action_cost_inr": "0.00",
+    "modeled_sustainability_status": "timing_gap_only"
+  },
+  "stress_with_action": {
+    "opening_cash_inr": "18000.00",
+    "cash_by_date": [
+      {
+        "date": "2026-06-22",
+        "kind": "loan_disbursement",
+        "amount_inr": "120000.00",
+        "cash_after_inr": "138000.00"
+      },
+      {
+        "date": "2026-06-28",
+        "kind": "crop_inputs",
+        "amount_inr": "-53000.00",
+        "cash_after_inr": "85000.00"
+      },
+      {
+        "date": "2026-11-02",
+        "kind": "household_expense",
+        "amount_inr": "-12000.00",
+        "cash_after_inr": "73000.00"
+      },
+      {
+        "date": "2026-11-09",
+        "kind": "crop_sale",
+        "amount_inr": "164798.05",
+        "cash_after_inr": "237798.05"
+      },
+      {
+        "date": "2026-12-05",
+        "kind": "bank_payment",
+        "amount_inr": "-126549.04",
+        "cash_after_inr": "111249.01",
+        "scheduled_due_inr": "126549.04"
+      }
+    ],
+    "payments": [
+      {
+        "date": "2026-12-05",
+        "cash_before_due_inr": "237798.05",
+        "bank_due_inr": "126549.04",
+        "cash_gap_inr": "0.00",
+        "informal_draw_inr": "0.00",
+        "formal_paid_inr": "126549.04",
+        "unmet_due_inr": "0.00",
+        "cash_after_due_inr": "111249.01"
+      }
+    ],
+    "cash_pre_due_inr": "237798.05",
+    "due_inr": "126549.04",
+    "cash_gap_inr": "0.00",
+    "cash_gap_total_inr": "0.00",
+    "formal_paid_inr": "126549.04",
+    "formal_balance_end_inr": "0.00",
+    "bridge_draw_inr": "0.00",
+    "informal_balance_end_inr": "0.00",
+    "informal_interest_inr": "0.00",
+    "informal_paid_inr": "0.00",
+    "net_free_cash_inr": "111249.01",
+    "bank_total_due_inr": "126549.04",
+    "season_end": "2026-12-12",
+    "yield_t_per_ha": "3.0464",
+    "production_tonnes": "7.31136",
+    "price_inr_per_quintal": "2450.00",
+    "gross_revenue_inr": "164798.05",
+    "sale_date": "2026-11-09",
+    "due_date": "2026-12-05",
+    "contractual_due_inr": "125365.48",
+    "loan_schedule": [
+      {
+        "date": "2026-12-05",
+        "amount_inr": "126549.04"
+      }
+    ],
+    "action_cost_inr": "1183.56",
+    "action_id": "reschedule_30d",
+    "stage_stress": {
+      "planting": 0.0,
+      "vegetative": 0.0,
+      "flowering": 0.2,
+      "grain_fill": 0.0,
+      "harvest": 0.0
+    },
+    "crop_stages": [
+      {
+        "name": "planting",
+        "start_date": "2026-06-20",
+        "end_date": "2026-07-14",
+        "calendar_status": "assumed"
+      },
+      {
+        "name": "vegetative",
+        "start_date": "2026-07-15",
+        "end_date": "2026-08-13",
+        "calendar_status": "assumed"
+      },
+      {
+        "name": "flowering",
+        "start_date": "2026-08-14",
+        "end_date": "2026-09-03",
+        "calendar_status": "assumed"
+      },
+      {
+        "name": "grain_fill",
+        "start_date": "2026-09-04",
+        "end_date": "2026-10-10",
+        "calendar_status": "assumed"
+      },
+      {
+        "name": "harvest",
+        "start_date": "2026-10-11",
+        "end_date": "2026-11-01",
+        "calendar_status": "assumed"
+      }
+    ],
+    "heat_event": {
+      "stage": "flowering",
+      "start_date": "2026-08-14",
+      "end_date": "2026-08-17",
+      "duration_days": 4
+    },
+    "fin03_inputs": {
+      "satellite": {
+        "name": "NDVI / FPAR",
+        "value": null,
+        "unit": "index",
+        "status": "unavailable",
+        "source": null
+      },
+      "weather_forecast": {
+        "rainfall_change_pct": 0,
+        "heatwave_days": 4,
+        "heatwave_growth_stage": "flowering",
+        "status": "hypothetical_scenario",
+        "issued_at": null
+      },
+      "soil": {
+        "name": "Soil moisture",
+        "value": null,
+        "unit": "volumetric fraction",
+        "status": "unavailable"
+      },
+      "crop": {
+        "name": "Wheat",
+        "area_ha": 2.4,
+        "season_start": "2026-06-20",
+        "season_end": "2026-11-01",
+        "status": "synthetic_borrower_assumption"
+      },
+      "irrigation": {
+        "fraction": 0.45,
+        "unit": "fraction of area",
+        "status": "synthetic_borrower_input"
+      },
+      "yield_history": {
+        "baseline_t_per_ha": "3.2",
+        "projected_t_per_ha": "3.0464",
+        "unit": "tonnes/hectare",
+        "status": "assumed_illustrative_response",
+        "historical_observations": null
+      },
+      "market_price": {
+        "inr_per_quintal": "2450.00",
+        "unit": "INR/quintal",
+        "status": "assumed_demo_input",
+        "observed_at": null
+      },
+      "credit_history": {
+        "events": [
+          {
+            "season": "2023/24",
+            "source_status": "synthetic_demo_record",
+            "status": "on_time"
+          },
+          {
+            "season": "2024/25",
+            "source_status": "synthetic_demo_record",
+            "status": "on_time"
+          }
+        ],
+        "status": "synthetic_demo_records",
+        "observed_bank_data": false
+      }
+    },
+    "source_status": {
+      "satellite": "unavailable",
+      "weather_forecast": "hypothetical_scenario",
+      "soil": "unavailable",
+      "crop": "synthetic_borrower_assumption",
+      "irrigation": "synthetic_borrower_input",
+      "yield_history": "assumed_illustrative_response",
+      "market_price": "assumed_demo_input",
+      "credit_history": "synthetic_demo_records"
+    },
+    "repayment_probability_simulated": "1.0000",
+    "p_shortfall": "0.0000",
+    "probability_basis": {
+      "paths": 21,
+      "repaid_paths": 21,
+      "shortfall_paths": 0,
+      "type": "equally_weighted_hypothetical_paths",
+      "yield_range": "\u00b120%",
+      "price_range": "\u00b110%",
+      "calibrated": false
+    },
+    "formal_repayment_status": "simulated_due_satisfied",
+    "debt_cycle": [
+      {
+        "season": 1,
+        "climate_shock": true,
+        "yield_t_per_ha": "3.0464",
+        "gross_revenue_inr": "164798.05",
+        "opening_total_debt_inr": "120000.00",
+        "cash_before_due_inr": "237798.05",
+        "bank_due_inr": "126549.04",
+        "formal_paid_inr": "126549.04",
+        "informal_draw_inr": "0.00",
+        "formal_balance_end_inr": "0.00",
+        "informal_balance_end_inr": "0.00",
+        "total_debt_end_inr": "0.00",
+        "net_free_cash_inr": "111249.01",
+        "cash_gap_inr": "0.00",
+        "unmet_due_inr": "0.00",
+        "interest_paid_inr": "0.00",
+        "action_cost_inr": "1183.56",
+        "cash_by_date": [
+          {
+            "date": "2026-06-22",
+            "kind": "loan_disbursement",
+            "amount_inr": "120000.00",
+            "cash_after_inr": "138000.00"
+          },
+          {
+            "date": "2026-06-28",
+            "kind": "crop_inputs",
+            "amount_inr": "-53000.00",
+            "cash_after_inr": "85000.00"
+          },
+          {
+            "date": "2026-11-02",
+            "kind": "household_expense",
+            "amount_inr": "-12000.00",
+            "cash_after_inr": "73000.00"
+          },
+          {
+            "date": "2026-11-09",
+            "kind": "crop_sale",
+            "amount_inr": "164798.05",
+            "cash_after_inr": "237798.05"
+          },
+          {
+            "date": "2026-12-05",
+            "kind": "bank_payment",
+            "amount_inr": "-126549.04",
+            "cash_after_inr": "111249.01",
+            "scheduled_due_inr": "126549.04"
+          }
+        ],
+        "payments": [
+          {
+            "date": "2026-12-05",
+            "cash_before_due_inr": "237798.05",
+            "bank_due_inr": "126549.04",
+            "cash_gap_inr": "0.00",
+            "informal_draw_inr": "0.00",
+            "formal_paid_inr": "126549.04",
+            "unmet_due_inr": "0.00",
+            "cash_after_due_inr": "111249.01"
+          }
+        ],
+        "simulation_only": true
+      },
+      {
+        "season": 2,
+        "climate_shock": true,
+        "yield_t_per_ha": "3.0464",
+        "gross_revenue_inr": "164798.05",
+        "opening_total_debt_inr": "120000.00",
+        "cash_before_due_inr": "331047.06",
+        "bank_due_inr": "126549.04",
+        "formal_paid_inr": "126549.04",
+        "informal_draw_inr": "0.00",
+        "formal_balance_end_inr": "0.00",
+        "informal_balance_end_inr": "0.00",
+        "total_debt_end_inr": "0.00",
+        "net_free_cash_inr": "204498.02",
+        "cash_gap_inr": "0.00",
+        "unmet_due_inr": "0.00",
+        "interest_paid_inr": "0.00",
+        "action_cost_inr": "1183.56",
+        "cash_by_date": [
+          {
+            "date": "2027-06-22",
+            "kind": "loan_disbursement",
+            "amount_inr": "120000.00",
+            "cash_after_inr": "231249.01"
+          },
+          {
+            "date": "2027-06-28",
+            "kind": "crop_inputs",
+            "amount_inr": "-53000.00",
+            "cash_after_inr": "178249.01"
+          },
+          {
+            "date": "2027-11-02",
+            "kind": "household_expense",
+            "amount_inr": "-12000.00",
+            "cash_after_inr": "166249.01"
+          },
+          {
+            "date": "2027-11-09",
+            "kind": "crop_sale",
+            "amount_inr": "164798.05",
+            "cash_after_inr": "331047.06"
+          },
+          {
+            "date": "2027-12-05",
+            "kind": "bank_payment",
+            "amount_inr": "-126549.04",
+            "cash_after_inr": "204498.02",
+            "scheduled_due_inr": "126549.04"
+          }
+        ],
+        "payments": [
+          {
+            "date": "2027-12-05",
+            "cash_before_due_inr": "331047.06",
+            "bank_due_inr": "126549.04",
+            "cash_gap_inr": "0.00",
+            "informal_draw_inr": "0.00",
+            "formal_paid_inr": "126549.04",
+            "unmet_due_inr": "0.00",
+            "cash_after_due_inr": "204498.02"
+          }
+        ],
+        "simulation_only": true
+      },
+      {
+        "season": 3,
+        "climate_shock": true,
+        "yield_t_per_ha": "3.0464",
+        "gross_revenue_inr": "164798.05",
+        "opening_total_debt_inr": "120000.00",
+        "cash_before_due_inr": "424296.07",
+        "bank_due_inr": "126549.04",
+        "formal_paid_inr": "126549.04",
+        "informal_draw_inr": "0.00",
+        "formal_balance_end_inr": "0.00",
+        "informal_balance_end_inr": "0.00",
+        "total_debt_end_inr": "0.00",
+        "net_free_cash_inr": "297747.03",
+        "cash_gap_inr": "0.00",
+        "unmet_due_inr": "0.00",
+        "interest_paid_inr": "0.00",
+        "action_cost_inr": "1183.56",
+        "cash_by_date": [
+          {
+            "date": "2028-06-21",
+            "kind": "loan_disbursement",
+            "amount_inr": "120000.00",
+            "cash_after_inr": "324498.02"
+          },
+          {
+            "date": "2028-06-27",
+            "kind": "crop_inputs",
+            "amount_inr": "-53000.00",
+            "cash_after_inr": "271498.02"
+          },
+          {
+            "date": "2028-11-01",
+            "kind": "household_expense",
+            "amount_inr": "-12000.00",
+            "cash_after_inr": "259498.02"
+          },
+          {
+            "date": "2028-11-08",
+            "kind": "crop_sale",
+            "amount_inr": "164798.05",
+            "cash_after_inr": "424296.07"
+          },
+          {
+            "date": "2028-12-04",
+            "kind": "bank_payment",
+            "amount_inr": "-126549.04",
+            "cash_after_inr": "297747.03",
+            "scheduled_due_inr": "126549.04"
+          }
+        ],
+        "payments": [
+          {
+            "date": "2028-12-04",
+            "cash_before_due_inr": "424296.07",
+            "bank_due_inr": "126549.04",
+            "cash_gap_inr": "0.00",
+            "informal_draw_inr": "0.00",
+            "formal_paid_inr": "126549.04",
+            "unmet_due_inr": "0.00",
+            "cash_after_due_inr": "297747.03"
+          }
+        ],
+        "simulation_only": true
+      }
+    ],
+    "comparison_context_hash": "7e1209895a000d84c00ef50823fc03f722d2549417406c8ab42ab0ac19e32752",
+    "three_season_action_cost_inr": "3550.68",
+    "modeled_sustainability_status": "self_funded_payments"
+  },
+  "action_status": "simulated_proposal",
+  "action_candidates": [
+    {
+      "action_id": "reschedule_30d",
+      "eligible": true,
+      "reason": "Illustrative officer proposal; requires bank approval."
+    },
+    {
+      "action_id": "split_payment",
+      "eligible": true,
+      "reason": "Illustrative officer proposal; requires bank approval."
+    }
+  ],
+  "comparison_deltas": {
+    "stress_minus_baseline": {
+      "cash_gap_inr": "52365.48",
+      "gross_revenue_inr": "-8309.15"
+    },
+    "action_minus_stress": {
+      "cash_gap_inr": "-52365.48",
+      "action_cost_inr": "1183.56"
+    }
+  },
+  "repayment_bridge": {
+    "steps": [
+      {
+        "id": "baseline_pre_due",
+        "label": "Baseline cash before due",
+        "amount_inr": "246107.20",
+        "running_balance_inr": "246107.20",
+        "data_status": "synthetic_and_assumed",
+        "source_ids": [
+          "demo-fixture-2026-10-09.2"
+        ],
+        "formula": "sum of dated cash flows before the first bank payment",
+        "to_date": "2026-11-05"
+      },
+      {
+        "id": "timing",
+        "label": "Sale timing effect by due date",
+        "amount_inr": "-173107.20",
+        "running_balance_inr": "73000.00",
+        "data_status": "assumed",
+        "source_ids": [
+          "demo-fixture-2026-10-09.2"
+        ],
+        "to_date": "2026-11-05",
+        "formula": "quantity at reference price, then price on shocked quantity; timing excludes proceeds after due"
+      }
+    ],
+    "cash_pre_due_inr": "73000.00",
+    "due_inr": "125365.48",
+    "post_due_cash_inr": "-52365.48",
+    "shortfall_inr": "52365.48",
+    "attribution": "Fixed sequential accounting attribution; rounded pennies are assigned to the price effect. Sale proceeds after due are excluded."
+  },
+  "debt_cycle": [
+    {
+      "season": 1,
+      "climate_shock": true,
+      "yield_t_per_ha": "3.0464",
+      "gross_revenue_inr": "164798.05",
+      "opening_total_debt_inr": "120000.00",
+      "cash_before_due_inr": "73000.00",
+      "bank_due_inr": "125365.48",
+      "formal_paid_inr": "73000.00",
+      "informal_draw_inr": "0.00",
+      "formal_balance_end_inr": "52365.48",
+      "informal_balance_end_inr": "0.00",
+      "total_debt_end_inr": "52365.48",
+      "net_free_cash_inr": "164798.05",
+      "cash_gap_inr": "52365.48",
+      "unmet_due_inr": "52365.48",
+      "interest_paid_inr": "0.00",
+      "action_cost_inr": "0.00",
+      "cash_by_date": [
+        {
+          "date": "2026-06-22",
+          "kind": "loan_disbursement",
+          "amount_inr": "120000.00",
+          "cash_after_inr": "138000.00"
+        },
+        {
+          "date": "2026-06-28",
+          "kind": "crop_inputs",
+          "amount_inr": "-53000.00",
+          "cash_after_inr": "85000.00"
+        },
+        {
+          "date": "2026-11-02",
+          "kind": "household_expense",
+          "amount_inr": "-12000.00",
+          "cash_after_inr": "73000.00"
+        },
+        {
+          "date": "2026-11-05",
+          "kind": "bank_payment",
+          "amount_inr": "-73000.00",
+          "cash_after_inr": "0.00",
+          "scheduled_due_inr": "125365.48"
+        },
+        {
+          "date": "2026-11-09",
+          "kind": "crop_sale",
+          "amount_inr": "164798.05",
+          "cash_after_inr": "164798.05"
+        }
+      ],
+      "payments": [
+        {
+          "date": "2026-11-05",
+          "cash_before_due_inr": "73000.00",
+          "bank_due_inr": "125365.48",
+          "cash_gap_inr": "52365.48",
+          "informal_draw_inr": "0.00",
+          "formal_paid_inr": "73000.00",
+          "unmet_due_inr": "52365.48",
+          "cash_after_due_inr": "0.00"
+        }
+      ],
+      "simulation_only": true
+    },
+    {
+      "season": 2,
+      "climate_shock": true,
+      "yield_t_per_ha": "3.0464",
+      "gross_revenue_inr": "164798.05",
+      "opening_total_debt_inr": "172365.48",
+      "cash_before_due_inr": "219798.05",
+      "bank_due_inr": "184014.82",
+      "formal_paid_inr": "184014.82",
+      "informal_draw_inr": "0.00",
+      "formal_balance_end_inr": "0.00",
+      "informal_balance_end_inr": "0.00",
+      "total_debt_end_inr": "0.00",
+      "net_free_cash_inr": "200581.28",
+      "cash_gap_inr": "0.00",
+      "unmet_due_inr": "0.00",
+      "interest_paid_inr": "0.00",
+      "action_cost_inr": "0.00",
+      "cash_by_date": [
+        {
+          "date": "2027-06-22",
+          "kind": "loan_disbursement",
+          "amount_inr": "120000.00",
+          "cash_after_inr": "284798.05"
+        },
+        {
+          "date": "2027-06-28",
+          "kind": "crop_inputs",
+          "amount_inr": "-53000.00",
+          "cash_after_inr": "231798.05"
+        },
+        {
+          "date": "2027-11-02",
+          "kind": "household_expense",
+          "amount_inr": "-12000.00",
+          "cash_after_inr": "219798.05"
+        },
+        {
+          "date": "2027-11-05",
+          "kind": "bank_payment",
+          "amount_inr": "-184014.82",
+          "cash_after_inr": "35783.23",
+          "scheduled_due_inr": "184014.82"
+        },
+        {
+          "date": "2027-11-09",
+          "kind": "crop_sale",
+          "amount_inr": "164798.05",
+          "cash_after_inr": "200581.28"
+        }
+      ],
+      "payments": [
+        {
+          "date": "2027-11-05",
+          "cash_before_due_inr": "219798.05",
+          "bank_due_inr": "184014.82",
+          "cash_gap_inr": "0.00",
+          "informal_draw_inr": "0.00",
+          "formal_paid_inr": "184014.82",
+          "unmet_due_inr": "0.00",
+          "cash_after_due_inr": "35783.23"
+        }
+      ],
+      "simulation_only": true
+    },
+    {
+      "season": 3,
+      "climate_shock": true,
+      "yield_t_per_ha": "3.0464",
+      "gross_revenue_inr": "164798.05",
+      "opening_total_debt_inr": "120000.00",
+      "cash_before_due_inr": "255581.28",
+      "bank_due_inr": "125365.48",
+      "formal_paid_inr": "125365.48",
+      "informal_draw_inr": "0.00",
+      "formal_balance_end_inr": "0.00",
+      "informal_balance_end_inr": "0.00",
+      "total_debt_end_inr": "0.00",
+      "net_free_cash_inr": "295013.85",
+      "cash_gap_inr": "0.00",
+      "unmet_due_inr": "0.00",
+      "interest_paid_inr": "0.00",
+      "action_cost_inr": "0.00",
+      "cash_by_date": [
+        {
+          "date": "2028-06-21",
+          "kind": "loan_disbursement",
+          "amount_inr": "120000.00",
+          "cash_after_inr": "320581.28"
+        },
+        {
+          "date": "2028-06-27",
+          "kind": "crop_inputs",
+          "amount_inr": "-53000.00",
+          "cash_after_inr": "267581.28"
+        },
+        {
+          "date": "2028-11-01",
+          "kind": "household_expense",
+          "amount_inr": "-12000.00",
+          "cash_after_inr": "255581.28"
+        },
+        {
+          "date": "2028-11-04",
+          "kind": "bank_payment",
+          "amount_inr": "-125365.48",
+          "cash_after_inr": "130215.80",
+          "scheduled_due_inr": "125365.48"
+        },
+        {
+          "date": "2028-11-08",
+          "kind": "crop_sale",
+          "amount_inr": "164798.05",
+          "cash_after_inr": "295013.85"
+        }
+      ],
+      "payments": [
+        {
+          "date": "2028-11-04",
+          "cash_before_due_inr": "255581.28",
+          "bank_due_inr": "125365.48",
+          "cash_gap_inr": "0.00",
+          "informal_draw_inr": "0.00",
+          "formal_paid_inr": "125365.48",
+          "unmet_due_inr": "0.00",
+          "cash_after_due_inr": "130215.80"
+        }
+      ],
+      "simulation_only": true
+    }
+  ],
+  "debt_warnings": [
+    {
+      "id": "ACTION_SHIFTS_BURDEN",
+      "severity": "moderate",
+      "season": 1,
+      "evidence": {
+        "stress_first_gap_inr": "52365.48",
+        "action_first_gap_inr": "0.00",
+        "extra_three_season_cost_inr": "3550.68"
+      },
+      "trace": "Rule evaluated against the canonical modeled payment/debt ledger.",
+      "proposed_officer_action": "Review dated cash needs and affordable repayment options with the borrower.",
+      "simulation_only": true,
+      "triggered_by_assumed_informal_borrowing": false,
+      "threshold_version": "warnings-demo-v1"
+    }
+  ],
+  "input_data_status": {
+    "observed": [],
+    "forecast": [],
+    "assumed": [
+      "weather",
+      "calendar",
+      "yield",
+      "price"
+    ],
+    "simulated": [
+      "borrower",
+      "loan",
+      "credit history"
+    ],
+    "unavailable": [
+      "NDVI",
+      "soil moisture"
+    ]
+  },
+  "risk_semantics": "Repayment feasibility is the fraction of 21 equally weighted hypothetical yield/price paths that settle all scheduled bank dues. This finite simulation is not calibrated to real borrowers or observed defaults.",
+  "drivers": [
+    "Crop sale 2026-11-09 vs first bank due 2026-11-05",
+    "Assumed Wheat heat sensitivity in flowering; illustrative response",
+    "Dated expenses, permitted bridge draws and both installments are reconciled in the cash ledger"
+  ],
+  "warnings": [
+    "All lending records are synthetic; climate/yield/price inputs are assumed.",
+    "Crop calendar is an illustrative timing fixture, not a verified regional agronomic calendar.",
+    "Actions require bank review; informal borrowing is a user-selected simulation."
+  ]
+}

@@ -1,0 +1,779 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "PhenoCredit",
+    "description": "Offline synthetic agricultural credit scenario demo",
+    "version": "0.2.0"
+  },
+  "paths": {
+    "/api/demo/seed": {
+      "post": {
+        "summary": "Initialize Demo Database",
+        "operationId": "initialize_demo_database_api_demo_seed_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "summary": "Health",
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/borrowers": {
+      "get": {
+        "summary": "Borrowers",
+        "operationId": "borrowers_api_borrowers_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/overview": {
+      "get": {
+        "summary": "Overview",
+        "operationId": "overview_api_overview_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/borrowers/{borrower_id}": {
+      "get": {
+        "summary": "Borrower",
+        "operationId": "borrower_api_borrowers__borrower_id__get",
+        "parameters": [
+          {
+            "name": "borrower_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Borrower Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/borrowers/{borrower_id}/loan": {
+      "get": {
+        "summary": "Borrower Loan",
+        "operationId": "borrower_loan_api_borrowers__borrower_id__loan_get",
+        "parameters": [
+          {
+            "name": "borrower_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Borrower Id"
+            }
+          },
+          {
+            "name": "scenario_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Scenario Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/climate": {
+      "get": {
+        "summary": "Climate",
+        "operationId": "climate_api_climate_get",
+        "parameters": [
+          {
+            "name": "region",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "Nashik",
+              "title": "Region"
+            }
+          },
+          {
+            "name": "crop",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "Wheat",
+              "title": "Crop"
+            }
+          },
+          {
+            "name": "as_of",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "default": "2026-10-09",
+              "title": "As Of"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/scenarios/evaluate": {
+      "post": {
+        "summary": "Scenario",
+        "operationId": "scenario_api_scenarios_evaluate_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScenarioRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScenarioBundle"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/debt-cycle/evaluate": {
+      "post": {
+        "summary": "Scenario",
+        "operationId": "scenario_api_debt_cycle_evaluate_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScenarioRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScenarioBundle"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/assessments/evaluate": {
+      "post": {
+        "summary": "Scenario",
+        "operationId": "scenario_api_assessments_evaluate_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScenarioRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScenarioBundle"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/interventions/evaluate": {
+      "post": {
+        "summary": "Intervention Candidates",
+        "operationId": "intervention_candidates_api_interventions_evaluate_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScenarioRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/scenarios/{scenario_id}": {
+      "get": {
+        "summary": "Reopen Scenario",
+        "operationId": "reopen_scenario_api_scenarios__scenario_id__get",
+        "parameters": [
+          {
+            "name": "scenario_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Scenario Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScenarioBundle"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/scenarios": {
+      "get": {
+        "summary": "Saved Scenarios",
+        "operationId": "saved_scenarios_api_scenarios_get",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/sources": {
+      "get": {
+        "summary": "Sources",
+        "operationId": "sources_api_sources_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "Overrides": {
+        "properties": {
+          "rainfall_change_pct": {
+            "type": "number",
+            "maximum": 100.0,
+            "minimum": -100.0,
+            "title": "Rainfall Change Pct",
+            "default": 0
+          },
+          "heatwave_days": {
+            "type": "integer",
+            "maximum": 45.0,
+            "minimum": 0.0,
+            "title": "Heatwave Days",
+            "default": 0
+          },
+          "heatwave_growth_stage": {
+            "type": "string",
+            "enum": [
+              "planting",
+              "vegetative",
+              "flowering",
+              "grain_fill",
+              "harvest"
+            ],
+            "title": "Heatwave Growth Stage",
+            "default": "flowering"
+          },
+          "market_price_change_pct": {
+            "type": "number",
+            "maximum": 100.0,
+            "minimum": -90.0,
+            "title": "Market Price Change Pct",
+            "default": 0
+          },
+          "irrigation_fraction": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Irrigation Fraction"
+          },
+          "assumed_informal_bridge_inr": {
+            "type": "number",
+            "maximum": 1000000.0,
+            "minimum": 0.0,
+            "title": "Assumed Informal Bridge Inr",
+            "default": 0
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "Overrides"
+      },
+      "ScenarioBundle": {
+        "properties": {
+          "borrower_id": {
+            "type": "string",
+            "title": "Borrower Id"
+          },
+          "scenario_id": {
+            "type": "string",
+            "title": "Scenario Id"
+          },
+          "input_hash": {
+            "type": "string",
+            "title": "Input Hash"
+          },
+          "comparison_context_hash": {
+            "type": "string",
+            "title": "Comparison Context Hash"
+          },
+          "engine_version": {
+            "type": "string",
+            "title": "Engine Version"
+          },
+          "assessment_as_of": {
+            "type": "string",
+            "format": "date",
+            "title": "Assessment As Of"
+          },
+          "source_versions": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Source Versions"
+          },
+          "source_snapshot_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Source Snapshot Ids"
+          },
+          "frozen_context": {
+            "type": "object",
+            "title": "Frozen Context"
+          },
+          "scenario_request": {
+            "type": "object",
+            "title": "Scenario Request"
+          },
+          "claim_scope": {
+            "type": "string",
+            "const": "synthetic_lending_scenario_conditional",
+            "title": "Claim Scope"
+          },
+          "baseline": {
+            "type": "object",
+            "title": "Baseline"
+          },
+          "stress": {
+            "type": "object",
+            "title": "Stress"
+          },
+          "stress_with_action": {
+            "anyOf": [
+              {
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stress With Action"
+          },
+          "action_status": {
+            "type": "string",
+            "enum": [
+              "not_selected",
+              "simulated_proposal",
+              "ineligible"
+            ],
+            "title": "Action Status"
+          },
+          "action_candidates": {
+            "items": {
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Action Candidates"
+          },
+          "comparison_deltas": {
+            "type": "object",
+            "title": "Comparison Deltas"
+          },
+          "repayment_bridge": {
+            "type": "object",
+            "title": "Repayment Bridge"
+          },
+          "debt_cycle": {
+            "items": {
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Debt Cycle"
+          },
+          "debt_warnings": {
+            "items": {
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Debt Warnings"
+          },
+          "input_data_status": {
+            "additionalProperties": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "type": "object",
+            "title": "Input Data Status"
+          },
+          "risk_semantics": {
+            "type": "string",
+            "title": "Risk Semantics"
+          },
+          "drivers": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Drivers"
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Warnings"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "borrower_id",
+          "scenario_id",
+          "input_hash",
+          "comparison_context_hash",
+          "engine_version",
+          "assessment_as_of",
+          "source_versions",
+          "source_snapshot_ids",
+          "frozen_context",
+          "scenario_request",
+          "claim_scope",
+          "baseline",
+          "stress",
+          "stress_with_action",
+          "action_status",
+          "action_candidates",
+          "comparison_deltas",
+          "repayment_bridge",
+          "debt_cycle",
+          "debt_warnings",
+          "input_data_status",
+          "risk_semantics",
+          "drivers",
+          "warnings"
+        ],
+        "title": "ScenarioBundle"
+      },
+      "ScenarioRequest": {
+        "properties": {
+          "borrower_id": {
+            "type": "string",
+            "title": "Borrower Id",
+            "default": "B-DEMO-001"
+          },
+          "as_of": {
+            "type": "string",
+            "format": "date",
+            "title": "As Of",
+            "default": "2026-10-09"
+          },
+          "overrides": {
+            "$ref": "#/components/schemas/Overrides"
+          },
+          "action_id": {
+            "type": "string",
+            "enum": [
+              "reschedule_30d",
+              "split_payment",
+              "none"
+            ],
+            "title": "Action Id",
+            "default": "none"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "ScenarioRequest"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    }
+  }
+}

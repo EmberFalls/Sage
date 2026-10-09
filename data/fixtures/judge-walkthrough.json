@@ -1,0 +1,25 @@
+{
+  "fixture_id": "judge-walkthrough-2026-10-09-v1",
+  "description": "Deterministic pre-due-date FIN-03 demo scenario; all weather and price values are assumptions.",
+  "request": {
+    "borrower_id": "B-DEMO-001",
+    "as_of": "2026-10-09",
+    "action_id": "split_payment",
+    "overrides": {
+      "rainfall_change_pct": 0,
+      "heatwave_days": 4,
+      "heatwave_growth_stage": "flowering",
+      "market_price_change_pct": 0,
+      "irrigation_fraction": null,
+      "assumed_informal_bridge_inr": 0
+    }
+  },
+  "expected": {
+    "stress_sale_date": "2026-11-09",
+    "stress_cash_before_due_inr": "73000.00",
+    "stress_due_gap_inr": "52365.48",
+    "action_id": "split_payment",
+    "action_status": "simulated_proposal"
+  },
+  "data_status": "synthetic_and_assumed"
+}
