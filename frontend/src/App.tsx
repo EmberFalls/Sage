@@ -6,6 +6,9 @@ import ScenarioEvidence from './ScenarioEvidence'
 import { HeroSection } from './HeroSection'
 import { LandingPage } from './landing/LandingPage'
 
+import { useAuth } from './auth/AuthContext'
+import { LoginPage } from './auth/LoginPage'
+
 const API = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
 const product = import.meta.env.VITE_PRODUCT_NAME || 'PhenoCredit'
 const WALKTHROUGH_REQUEST={borrower_id:'B-DEMO-001',as_of:'2026-10-09',action_id:'split_payment',overrides:{rainfall_change_pct:0,heatwave_days:4,heatwave_growth_stage:'flowering',market_price_change_pct:0,irrigation_fraction:null,assumed_informal_bridge_inr:0}}
@@ -20,6 +23,7 @@ const inr = (n:any) => `₹${fmt(n)}`
 const percent = (n:any) => `${Math.round(Number(n||0)*100)}%`
 
 function App(){
+  const { user, isAuthenticated, role, logout } = useAuth()
   const [page,setPage]=useState('landing'),[borrowers,setBorrowers]=useState<Borrower[]>([]),[selected,setSelected]=useState('B-DEMO-001')
   const [assessment,setAssessment]=useState<Assessment|null>(null),[busy,setBusy]=useState(false),[error,setError]=useState(''),[drawer,setDrawer]=useState(false)
   const [appliedKey,setAppliedKey]=useState('')
@@ -27,9 +31,18 @@ function App(){
   const [savedError,setSavedError]=useState('')
   const [asOf,setAsOf]=useState('2026-10-09')
   const [irrigation,setIrrigation]=useState<number|null>(null)
+  const [userDropdown, setUserDropdown] = useState(false)
   const latestRequest=useRef(0)
   const latestKey=useRef('')
   const [rain,setRain]=useState(0),[heat,setHeat]=useState(0),[stage,setStage]=useState('flowering'),[price,setPrice]=useState(0),[bridge,setBridge]=useState(0),[action,setAction]=useState('none'),[search,setSearch]=useState('')
+
+  // Sync selected borrower when farmer logs in
+  useEffect(() => {
+    if (user?.role === 'farmer' && user.linked_borrower_id) {
+      setSelected(user.linked_borrower_id)
+    }
+  }, [user])
+
   useEffect(()=>{fetch(`${API}/api/borrowers`).then(r=>r.json()).then(setBorrowers).catch(()=>setError('Backend unavailable. Start the API to load the offline demo.'))},[])
   const currentKey=JSON.stringify([selected,rain,heat,stage,price,bridge,action,asOf,irrigation])
   latestKey.current=currentKey
@@ -38,22 +51,29 @@ function App(){
   const filtered=useMemo(()=>borrowers.filter(b=>`${b.alias} ${b.id} ${b.district} ${b.crop}`.toLowerCase().includes(search.toLowerCase())),[borrowers,search])
   const borrower=appliedKey===currentKey&&assessment?.borrower_id===selected?{...borrowers.find(b=>b.id===selected),...assessment.frozen_context.borrower} as Borrower:borrowers.find(b=>b.id===selected)
   const assess=assessment?.borrower_id===selected ? (appliedKey===currentKey ? assessment : {...assessment,stress_with_action:null,action_status:'not_selected'}) : null
-  const navigate=(p:string)=>{setPage(p);setDrawer(false)}
+  const navigate=(p:string)=>{setPage(p);setDrawer(false);setUserDropdown(false)}
   const selectBorrower=(id:string)=>{setIrrigation(null);setSelected(id)}
-  const resetScenario=()=>{setSelected('B-DEMO-001');setAsOf('2026-10-09');setIrrigation(null);setRain(0);setHeat(0);setStage('flowering');setPrice(0);setBridge(0);setAction('none')}
+  const resetScenario=()=>{setSelected(user?.linked_borrower_id || 'B-DEMO-001');setAsOf('2026-10-09');setIrrigation(null);setRain(0);setHeat(0);setStage('flowering');setPrice(0);setBridge(0);setAction('none')}
   const loadWalkthrough=()=>{const req=WALKTHROUGH_REQUEST;setSelected(req.borrower_id);setAsOf(req.as_of);setIrrigation(req.overrides.irrigation_fraction);setRain(req.overrides.rainfall_change_pct);setHeat(req.overrides.heatwave_days);setStage(req.overrides.heatwave_growth_stage);setPrice(req.overrides.market_price_change_pct);setBridge(req.overrides.assumed_informal_bridge_inr);setAction(req.action_id);navigate('scenarios')}
   const reopenSnapshot=async(id:string)=>{try{const response=await fetch(`${API}/api/scenarios/${encodeURIComponent(id)}`);if(!response.ok)throw new Error('Saved snapshot could not be loaded');const snapshot=await response.json();const req=snapshot.scenario_request;const overrides=req.overrides;latestRequest.current+=1;setBusy(false);setError('');setSavedError('');setAsOf(req.as_of);setIrrigation(overrides.irrigation_fraction);setSelected(snapshot.borrower_id);setRain(overrides.rainfall_change_pct);setHeat(overrides.heatwave_days);setStage(overrides.heatwave_growth_stage);setPrice(overrides.market_price_change_pct);setBridge(overrides.assumed_informal_bridge_inr);setAction(req.action_id);setAssessment(snapshot);const key=JSON.stringify([snapshot.borrower_id,overrides.rainfall_change_pct,overrides.heatwave_days,overrides.heatwave_growth_stage,overrides.market_price_change_pct,overrides.assumed_informal_bridge_inr,req.action_id,req.as_of,overrides.irrigation_fraction]);latestKey.current=key;setAppliedKey(key);navigate('scenarios')}catch(e:any){setSavedError(e.message||'Could not reopen snapshot')}}
   const isStale=Boolean(assessment&&appliedKey!==currentKey)
   const actionRun=()=>{run()}
   const download=()=>{if(!assessment||isStale||busy)return;const blob=new Blob([JSON.stringify(assessment,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`phenocredit-${assessment.borrower_id}-${assessment.comparison_context_hash.slice(0,8)}.json`;a.click();URL.revokeObjectURL(a.href)}
-  const title=({landing:'Landing page',overview:'Lender overview',borrowers:'Borrowers','borrower-detail':'Borrower detail',loans:'Loans',climate:'Climate intelligence',assessment:'Credit assessment',scenarios:'Scenario lab',interventions:'Intervention center',watchlist:'Watchlist & reports',farmer:'Farmer view',methodology:'Data & methodology'} as Record<string,string>)[page]||'Overview'
+  const title=({landing:'Landing page',login:'Sign in',overview:'Lender overview',borrowers:'Borrowers','borrower-detail':'Borrower detail',loans:'Loans',climate:'Climate intelligence',assessment:'Credit assessment',scenarios:'Scenario lab',interventions:'Intervention center',watchlist:'Watchlist & reports',farmer:'Farmer view',methodology:'Data & methodology'} as Record<string,string>)[page]||'Overview'
 
   if(page === 'landing'){
     return <LandingPage onNavigate={navigate} />
   }
 
-  const sidebar=<><div className="brand"><div className="brand-mark" onClick={()=>navigate('landing')} style={{cursor:'pointer'}}><Sprout size={20}/></div><div><strong>{product}</strong><span>CLIMATE CREDIT WORKSPACE</span></div><button className="icon-btn mobile-close" onClick={()=>setDrawer(false)}><X size={17}/></button></div><div className="demo-badge"><span className="pulse"/> DEMO MODE <span className="pill-light">OFFLINE READY</span></div>{nav.map(group=><div className="nav-group" key={group.group}><div className="nav-label">{group.group}</div>{group.items.map(([label,id])=><button key={id} className={`nav-item ${page===id?'active':''}`} onClick={()=>navigate(id)}><NavIcon id={id}/><span>{label}</span>{id==='scenarios'&&<i>LIVE</i>}</button>)}</div>)}<div className="sidebar-bottom"><button className={`nav-item ${page==='farmer'?'active':''}`} onClick={()=>navigate('farmer')}><Leaf size={17}/><span>Farmer view</span></button><button className={`nav-item ${page==='methodology'?'active':''}`} onClick={()=>navigate('methodology')}><CircleHelp size={17}/><span>Data & methodology</span></button><div className="user-block"><div className="avatar">AR</div><div><b>Analyst workspace</b><small>Demo access</small></div><ChevronDown size={15}/></div></div></>
-  return <div className="app-shell"><aside className={`sidebar ${drawer?'open':''}`}>{sidebar}</aside>{drawer&&<button className="scrim" onClick={()=>setDrawer(false)} aria-label="Close menu"/>}<main className="main"><header className="topbar"><button className="icon-btn mobile-menu" onClick={()=>setDrawer(true)}><Menu size={19}/></button><div className="crumb">Workspace <ChevronRight size={14}/><b>{title}</b></div><div className="top-actions"><span className="data-status"><i/> {error?'Backend unavailable':busy?'Updating scenario':assess?'Demo backend connected':'Connecting to backend'}</span><span className="icon-btn" title="Demo notification indicator"><Bell size={18}/><em className="notification-dot"/></span><div className="top-avatar">AR</div></div></header><div className="page-wrap"><div className="page-heading"><div><div className="eyebrow">FIN-03 · AGRICULTURAL CREDIT RISK</div><h1>{title}</h1><p>{page==='scenarios'?'Trace climate conditions through harvest cash flow and repayment timing.':page==='overview'?'Monitor climate-linked repayment capacity across your demo portfolio.':'Explore the same borrower, season and scenario across the workflow.'}</p></div><div className="heading-actions"><div className="asof"><span className="status-dot"/> Scenario as of <b>{asOf}</b></div>{page==='scenarios'&&<><button className="btn-outline" onClick={loadWalkthrough}>Load walkthrough</button><button className="btn-outline" onClick={resetScenario}>Reset scenario</button></>}<button className="btn-outline" onClick={download} disabled={!assess||isStale||busy}><Download size={15}/> Export snapshot</button></div></div><div className="truth-banner"><ShieldCheck size={16}/><span><b>Transparent demo data</b><span> Environmental inputs are assumptions · borrower and loan records are synthetic</span></span><button onClick={()=>navigate('methodology')}>Data notes <ChevronRight size={14}/></button></div>{(busy||isStale)&&<div className="refresh-banner"><span className="pulse"/>{busy?'Recalculating from backend…':'Inputs changed · recalculation queued'}</div>}{error&&<div className="error-banner"><AlertTriangle size={16}/>{error}<button onClick={run}>Retry</button></div>}
+  if(page === 'login'){
+    return <LoginPage onSuccess={() => navigate(user?.role === 'farmer' ? 'farmer' : 'overview')} onBack={() => navigate('landing')} />
+  }
+
+  const userInitials = user ? user.name.split(' ').map((n: string) => n[0]).filter(Boolean).join('').slice(0, 2).toUpperCase() : 'AR'
+  const userRoleLabel = user?.role === 'bank_officer' ? 'Bank Credit Officer' : user?.role === 'insurance_agent' ? 'Agri Insurer (Read-Only)' : user?.role === 'farmer' ? 'Farmer (OTP Verified)' : 'Analyst Workspace'
+
+  const sidebar=<><div className="brand"><div className="brand-mark" onClick={()=>navigate('landing')} style={{cursor:'pointer'}}><Sprout size={20}/></div><div><strong>{product}</strong><span>CLIMATE CREDIT WORKSPACE</span></div><button className="icon-btn mobile-close" onClick={()=>setDrawer(false)}><X size={17}/></button></div><div className="demo-badge"><span className="pulse"/> {user ? (user.role === 'farmer' ? 'FARMER PORTAL' : user.role === 'insurance_agent' ? 'INSURER VIEW' : 'BANK WORKSPACE') : 'DEMO MODE'} <span className="pill-light">OFFLINE READY</span></div>{nav.map(group=><div className="nav-group" key={group.group}><div className="nav-label">{group.group}</div>{group.items.map(([label,id])=><button key={id} className={`nav-item ${page===id?'active':''}`} onClick={()=>navigate(id)}><NavIcon id={id}/><span>{label}</span>{id==='scenarios'&&<i>LIVE</i>}</button>)}</div>)}<div className="sidebar-bottom"><button className={`nav-item ${page==='farmer'?'active':''}`} onClick={()=>navigate('farmer')}><Leaf size={17}/><span>Farmer view</span></button><button className={`nav-item ${page==='methodology'?'active':''}`} onClick={()=>navigate('methodology')}><CircleHelp size={17}/><span>Data & methodology</span></button><div className="user-block" onClick={()=>setUserDropdown(!userDropdown)} style={{cursor:'pointer',position:'relative'}}><div className="avatar">{userInitials}</div><div><b>{user?.name || 'Analyst workspace'}</b><small>{userRoleLabel}</small></div><ChevronDown size={15}/>{userDropdown&&<div style={{position:'absolute',bottom:'105%',left:0,right:0,background:'#1e293b',borderRadius:'10px',border:'1px solid rgba(255,255,255,0.12)',padding:'6px',zIndex:100,display:'flex',flexDirection:'column',gap:'4px'}}><button className="auth-nav-btn" onClick={(e)=>{e.stopPropagation();navigate('login')}}>Switch Account</button>{isAuthenticated&&<button className="auth-nav-btn" style={{color:'#f87171'}} onClick={(e)=>{e.stopPropagation();logout();navigate('landing')}}>Sign Out</button>}</div>}</div></div></>
+  return <div className="app-shell"><aside className={`sidebar ${drawer?'open':''}`}>{sidebar}</aside>{drawer&&<button className="scrim" onClick={()=>setDrawer(false)} aria-label="Close menu"/>}<main className="main"><header className="topbar"><button className="icon-btn mobile-menu" onClick={()=>setDrawer(true)}><Menu size={19}/></button><div className="crumb">Workspace <ChevronRight size={14}/><b>{title}</b></div><div className="top-actions"><span className="data-status"><i/> {error?'Backend unavailable':busy?'Updating scenario':assess?'Demo backend connected':'Connecting to backend'}</span><span className="icon-btn" title="Demo notification indicator"><Bell size={18}/><em className="notification-dot"/></span>{!isAuthenticated ? (<button className="auth-nav-btn login-btn" onClick={()=>navigate('login')}>Sign In</button>) : (<div className="top-avatar" onClick={()=>navigate('login')} title={`Logged in as ${user?.name} (${userRoleLabel}) · Click to switch`}>{userInitials}</div>)}</div></header><div className="page-wrap"><div className="page-heading"><div><div className="eyebrow">FIN-03 · AGRICULTURAL CREDIT RISK</div><h1>{title}</h1><p>{page==='scenarios'?'Trace climate conditions through harvest cash flow and repayment timing.':page==='overview'?'Monitor climate-linked repayment capacity across your demo portfolio.':page==='farmer'?'Personalized crop loan schedule, climate risk advisory and payment status.':'Explore the same borrower, season and scenario across the workflow.'}</p></div><div className="heading-actions"><div className="asof"><span className="status-dot"/> Scenario as of <b>{asOf}</b></div>{page==='scenarios'&&<><button className="btn-outline" onClick={loadWalkthrough}>Load walkthrough</button><button className="btn-outline" onClick={resetScenario}>Reset scenario</button></>}<button className="btn-outline" onClick={download} disabled={!assess||isStale||busy}><Download size={15}/> Export snapshot</button></div></div>{user?.role === 'insurance_agent' && (page === 'interventions' || page === 'scenarios') && (<div className="role-notice-banner insurance" style={{ marginBottom: 14 }}><span><b>Agri Insurance Underwriter Mode:</b> Viewing climate exposure & repayment vulnerability. Loan restructuring actions are read-only.</span><span className="tag neutral">AUDIT ONLY</span></div>)}{user?.role === 'farmer' && (<div className="role-notice-banner farmer" style={{ marginBottom: 14 }}><span><b>Farmer Portal (+91 {user.phone || '9876543210'}):</b> Verified via Mobile OTP. Showing live crop profile and loan status.</span><span className="tag green">OTP VERIFIED</span></div>)}<div className="truth-banner"><ShieldCheck size={16}/><span><b>Transparent demo data</b><span> Environmental inputs are assumptions · borrower and loan records are synthetic</span></span><button onClick={()=>navigate('methodology')}>Data notes <ChevronRight size={14}/></button></div>{(busy||isStale)&&<div className="refresh-banner"><span className="pulse"/>{busy?'Recalculating from backend…':'Inputs changed · recalculation queued'}</div>}{error&&<div className="error-banner"><AlertTriangle size={16}/>{error}<button onClick={run}>Retry</button></div>}
   {page==='overview'&&<Overview borrowers={borrowers} assessment={assess} go={navigate} select={selectBorrower}/>}
   {page==='borrowers'&&<BorrowersPage rows={filtered} search={search} setSearch={setSearch} selected={selected} select={(id)=>{selectBorrower(id);navigate('borrower-detail')}} assessment={assess}/>}
   {page==='borrower-detail'&&<BorrowerDetail borrowerId={selected} scenarioId={assess?.scenario_id} go={navigate}/>}
@@ -104,7 +124,78 @@ function WatchlistPage({assessment,go,saved,loadSaved,reopen,savedError}:{assess
   <Card><SectionTitle title="Current assessment report" sub={assessment?`${assessment.borrower_id} · ${assessment.engine_version} · ${assessment.scenario_id}`:'Run an assessment to create a report'}/><div className="report-actions"><button className="btn-outline" disabled={!assessment} onClick={()=>download('json')}>Download JSON</button><button className="btn-outline" disabled={!assessment} onClick={()=>download('csv')}>Download bridge CSV</button><button className="btn-primary" disabled={!assessment} onClick={()=>window.print()}>Print / save PDF</button></div><p className="microcopy">The report includes provenance, assumptions, dates, hashes, warning evidence and comparison results.</p>{assessment&&<div className="print-report"><h1>PhenoCredit scenario report</h1><p>{assessment.borrower_id} · as of {assessment.assessment_as_of} · engine {assessment.engine_version}</p><p>Data status: synthetic borrower/loan; assumed weather, calendar, yield and price; NDVI and soil unavailable.</p><h2>Baseline · stress · action</h2><table><thead><tr><th>Measure</th><th>Baseline</th><th>Stress</th><th>Stress + action</th></tr></thead><tbody>{[['Yield (t/ha)','yield_t_per_ha'],['Revenue (INR)','gross_revenue_inr'],['Cash before due (INR)','cash_pre_due_inr'],['Bank due (INR)','due_inr'],['Due-date gap (INR)','cash_gap_inr'],['Formal debt after season 3 (INR)','debt_cycle'],['Informal debt after season 3 (INR)','informal_debt'],['Action cost over 3 seasons (INR)','three_season_action_cost_inr']].map(([label,key])=><tr key={key}><td>{label}</td>{[assessment.baseline,assessment.stress,assessment.stress_with_action].map((v:any,i)=><td key={i}>{v?key==='debt_cycle'?inr(v.debt_cycle.at(-1).formal_balance_end_inr):key==='informal_debt'?inr(v.debt_cycle.at(-1).informal_balance_end_inr):String(v[key]):assessment.action_status==='ineligible'?'Ineligible':'Not selected'}</td>)}</tr>)}</tbody></table><h2>Bridge and rule evidence</h2><p>{assessment.repayment_bridge.attribution} Cash gap: {inr(assessment.repayment_bridge.shortfall_inr)}.</p>{assessment.debt_warnings.length?assessment.debt_warnings.map((w:any)=><p key={w.id}><b>{w.id}</b> · season {w.season} · {JSON.stringify(w.evidence)}</p>):<p>No debt warnings triggered by the modeled assumptions.</p>}<p>Comparison context: {assessment.comparison_context_hash}<br/>Input: {assessment.input_hash}</p><p>Proposals are simulated only. No lending decision is made.</p></div>}</Card>
   <Card><SectionTitle title="Saved assessment snapshots" sub="Snapshots are immutable. Reopen restores the borrower, controls and action used to create them." action={<button className="text-button" onClick={loadSaved}>Refresh list</button>}/>{savedError&&<div className="error-banner">{savedError}</div>}{saved.length?<div className="table-wrap"><table><thead><tr><th>Saved at (UTC)</th><th>Borrower</th><th>Scenario</th><th>Modeled gap</th><th>Engine</th><th/></tr></thead><tbody>{saved.map(item=><tr key={item.scenario_id}><td>{new Date(item.created_at).toLocaleString('en-IN',{timeZone:'UTC',timeZoneName:'short'})}</td><td>{item.borrower_id}</td><td><code>{item.scenario_id}</code></td><td>{inr(item.cash_gap_inr)}</td><td>{item.engine_version}</td><td><button className="btn-outline" onClick={()=>reopen(item.scenario_id)}>Reopen</button></td></tr>)}</tbody></table></div>:!savedError?<div className="empty">No saved assessments yet. Run an assessment, then return here to reopen it.</div>:null}</Card></div>
 }
-function FarmerPage({borrower,assessment}:{borrower:Borrower|undefined,assessment:Assessment|null}){return <div className="farmer-page"><div className="farmer-hero"><div className="brand-mark"><Sprout size={20}/></div><div><small>YOUR CROP LOAN SUMMARY</small><h2>Hello, {borrower?.alias||'Demo Farmer'}</h2></div></div><div className="kpi-grid"><Kpi label="Crop this season" value={borrower?.crop||'—'} detail={`${borrower?.area_ha||'—'} hectares · demo record`} icon={<Sprout size={18}/>} /><Kpi label="Next bank due" value={borrower?new Date(borrower.due_at).toLocaleDateString('en-IN'):'—'} detail="Check your loan documents" tone="blue" icon={<WalletCards size={18}/>} /><Kpi label="Indicative cash gap" value={assessment?inr(assessment.stress.cash_gap_inr):'—'} detail="Illustrative scenario only" tone="amber" icon={<AlertTriangle size={18}/>} /></div><Card><h2>Talk with your loan officer</h2><p className="body-copy">This demo does not contact your bank or change a loan. The figures are illustrative and should not be used as financial advice.</p></Card></div>}
+function FarmerPage({borrower,assessment}:{borrower:Borrower|undefined,assessment:Assessment|null}){
+  const { user } = useAuth()
+  const [requestSent, setRequestSent] = useState(false)
+  const isFarmerUser = user?.role === 'farmer'
+
+  return <div className="farmer-page">
+    <div className="farmer-hero">
+      <div className="brand-mark"><Sprout size={24}/></div>
+      <div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+          <small style={{ letterSpacing: '0.08em', textTransform: 'uppercase' }}>CROP LOAN & CLIMATE RISK SUMMARY</small>
+          {isFarmerUser && <span className="tag green">OTP VERIFIED · +91 {user?.phone || '9876543210'}</span>}
+        </div>
+        <h2>Welcome, {borrower?.alias || user?.name || 'Farmer Portal'}</h2>
+        <p style={{ margin: '4px 0 0', fontSize: '0.85rem', color: '#94a3b8' }}>
+          {borrower?.district} District · {borrower?.crop} ({borrower?.area_ha} hectares) · Branch: {borrower?.branch || 'Local Agril. Branch'}
+        </p>
+      </div>
+    </div>
+
+    <div className="kpi-grid">
+      <Kpi label="Crop & Cultivation" value={borrower?.crop||'—'} detail={`${borrower?.area_ha||'—'} ha · ${Math.round((borrower?.irrigation_fraction||0)*100)}% irrigated`} icon={<Sprout size={18}/>} />
+      <Kpi label="Original Loan Principal" value={borrower?.id==='B-DEMO-001'?inr(120000):inr(90000)} detail="Kharif Season Credit" tone="blue" icon={<WalletCards size={18}/>} />
+      <Kpi label="Contractual Bank Due" value={borrower?new Date(borrower.due_at).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}):'—'} detail="Due on maturity" icon={<Gauge size={18}/>} />
+      <Kpi label="Modeled Cash Shortfall" value={assessment?inr(assessment.stress.cash_gap_inr):'—'} detail="Under current climate simulation" tone="amber" icon={<AlertTriangle size={18}/>} />
+    </div>
+
+    <div className="content-grid">
+      <Card className="wide">
+        <SectionTitle title="Climate & Crop Advisory" sub="Stage-by-stage growth monitoring and stress advisory for your farm."/>
+        <div className="stage-line">
+          {['Planting','Vegetative','Flowering','Grain fill','Harvest'].map((s,i)=><div key={s} className="stage">
+            <div className={`stage-dot ${i===2?'current':''}`}/>
+            <b>{s}</b>
+            <small>{['20 Jun–14 Jul','15 Jul–13 Aug','14 Aug–3 Sep','4 Sep–10 Oct','11 Oct–12 Nov'][i]}</small>
+          </div>)}
+        </div>
+        <div className="status-panel olive" style={{ marginTop: '14px' }}>
+          <Sprout size={18}/>
+          <div>
+            <b>Current Stage: Flowering (Critical Water & Heat Sensitivity)</b>
+            <small>High heat sensitivity window. Projected harvest revenue estimated at {assessment ? inr(assessment.stress.gross_revenue_inr) : '₹2,38,000'}.</small>
+          </div>
+        </div>
+      </Card>
+
+      <Card>
+        <SectionTitle title="Repayment Assistance" sub="Proactive restructuring support"/>
+        <p style={{ fontSize: '0.85rem', color: '#cbd5e1', lineHeight: 1.45, marginBottom: '14px' }}>
+          If climate conditions delay harvest sale past your due date ({borrower?.due_at}), you can request an advisory review from your credit officer.
+        </p>
+
+        {requestSent ? (
+          <div className="auth-success-msg">
+            <span><b>Request Submitted:</b> Your loan officer (Aditi Rao) has been notified to evaluate a 30-day harvest timeline extension.</span>
+          </div>
+        ) : (
+          <button
+            className="btn-primary full"
+            onClick={() => setRequestSent(true)}
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+          >
+            <WalletCards size={16} /> Request Due Date +30 Days Review
+          </button>
+        )}
+        <p className="microcopy" style={{ marginTop: '10px' }}>
+          Figures shown are illustrative scenario simulations. Please consult your branch manager for official loan modifications.
+        </p>
+      </Card>
+    </div>
+  </div>
+}
 function Methodology(){return <div className="content-grid"><Card className="wide"><SectionTitle title="How this demo works" sub="One server-side assessment joins crop assumptions, climate scenario, dated cash and loan schedule."/><div className="method-flow">{[['01','Climate & crop stage','Hypothetical weather controls are assigned to the selected crop stage.'],['02','Illustrative yield response','An editable demo response rule adjusts yield; it is not trained or validated.'],['03','Dated cash ledger','Crop proceeds count only if the assumed sale date is on or before the bank due.'],['04','Conditional repayment','A simple simulation estimate is shown separately from observed repayment status.'],['05','Debt & actions','A three-season scenario and proposed actions show modeled trade-offs.']].map(x=><div className="method-step" key={x[0]}><b>{x[0]}</b><div><strong>{x[1]}</strong><p>{x[2]}</p></div></div>)}</div></Card><Card><SectionTitle title="Input provenance"/><div className="source-row"><span>Borrower & loan book</span><b className="tag amber">Synthetic</b></div><div className="source-row"><span>Weather</span><b className="tag olive">Assumed</b></div><div className="source-row"><span>NDVI / satellite</span><b className="tag neutral">Unavailable</b></div><div className="source-row"><span>Soil moisture</span><b className="tag neutral">Unavailable</b></div><div className="source-row"><span>Yield response & price</span><b className="tag olive">Assumed</b></div><p className="microcopy">One three-day Open-Meteo historical reanalysis sample is verified but not used by this demo. No matched Pune maize yield, weather, NDVI and price season is available; the other named sources remain uninspected or unverified.</p></Card><Card className="wide"><SectionTitle title="Claim limits"/><div className="notice amber"><AlertTriangle size={17}/><div><b>No validated default probability or hidden-debt detection.</b><span> Repayment feasibility is conditional on synthetic lending assumptions. Warnings describe only the modeled cash and debt timeline.</span></div></div></Card></div>}
 function CompareInfo(){return <></>}
 export default App
