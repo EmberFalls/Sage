@@ -9,10 +9,10 @@ from app.config import PRODUCT_NAME
 from app.auth.service import seed_demo_users
 from app.auth.router import router as auth_router
 from app.db import (append_loan_event, create_application, get_application, get_borrower_record,
-                   get_loan_record, get_scenario, get_source_snapshot, list_applications, list_borrower_records, list_loan_records,
+                   get_loan_record, get_scenario, get_comparison_bundle, get_source_snapshot, list_applications, list_borrower_records, list_loan_records,
                    list_scenarios, list_source_records,
                    list_source_refresh_events, list_source_snapshots, save_borrower_record,
-                   save_scenario, seed_demo_records, update_application,
+                   save_comparison_bundle, save_scenario, seed_demo_records, update_application,
                    update_application_with_demo_loan)
 from app.schemas import (ApplicationCreate, ApplicationStatusUpdate, BorrowerCreate, LedgerEventCreate,
                          FeatureSnapshotImport, ScenarioBundle, ScenarioRequest)
@@ -283,17 +283,49 @@ def scenario(req: ScenarioRequest):
         result = evaluate_scenario(req)
         result["snapshot_freshness"] = "current"
         result["snapshot_stale_reasons"] = []
-        save_scenario(result["scenario_id"], req.borrower_id, result["input_hash"], req.model_dump(mode="json"), result)
-        return result
+        return save_scenario(result["scenario_id"], req.borrower_id, result["input_hash"], req.model_dump(mode="json"), result)
     except KeyError: raise HTTPException(404, "Select a seeded demo borrower")
     except ValueError as exc: raise HTTPException(422, str(exc))
 
 
 @app.post("/api/interventions/evaluate")
 def intervention_candidates(req: ScenarioRequest):
-    selected = scenario(req)
+    no_action = scenario(req.model_copy(update={"action_id": "none"}))
     candidates = [scenario(req.model_copy(update={"action_id": action_id})) for action_id in ("reschedule_30d", "split_payment")]
-    return {"selected": selected, "candidates": candidates}
+    selected = no_action if req.action_id == "none" else next(row for row in candidates if row["scenario_request"]["action_id"] == req.action_id)
+    context_hash = no_action["comparison_context_hash"]
+    if any(candidate["comparison_context_hash"] != context_hash for candidate in candidates):
+        raise HTTPException(409, "Action results do not share the frozen comparison context")
+    bundle = save_comparison_bundle({
+        "borrower_id": req.borrower_id,
+        "comparison_context_hash": context_hash,
+        "baseline_ref": {"scenario_id": no_action["scenario_id"], "result": "baseline"},
+        "stress_ref": {"scenario_id": no_action["scenario_id"], "result": "stress"},
+        "candidate_refs": [{"action_id": row["scenario_request"]["action_id"], "scenario_id": row["scenario_id"], "result": "stress_with_action"} for row in candidates],
+        "input_hashes": [no_action["input_hash"], *[row["input_hash"] for row in candidates]],
+        "seed": no_action["frozen_context"]["seed"],
+        "climate_path_hash": no_action["frozen_context"]["climate_paths"]["hash"],
+        "idempotency_policy": "sha256 canonical content; duplicate scenario and bundle IDs return the first stored record",
+    })
+    selected["comparison_bundle_id"] = bundle["bundle_id"]
+    for candidate in candidates:
+        candidate["comparison_bundle_id"] = bundle["bundle_id"]
+    return {"selected": selected, "candidates": candidates, **bundle}
+
+
+@app.get("/api/comparison-bundles/{bundle_id}")
+def reopen_comparison_bundle(bundle_id: str):
+    bundle = get_comparison_bundle(bundle_id)
+    if bundle is None:
+        raise HTTPException(404, "Saved comparison bundle not found")
+    refs = [bundle["baseline_ref"]["scenario_id"], bundle["stress_ref"]["scenario_id"],
+            *[row["scenario_id"] for row in bundle["candidate_refs"]]]
+    results = {scenario_id: get_scenario(scenario_id) for scenario_id in refs}
+    if any(result is None for result in results.values()):
+        raise HTTPException(500, "Comparison bundle has a missing linked result")
+    return {**bundle, "selected": results[bundle["stress_ref"]["scenario_id"]],
+            "candidates": [{**results[ref["scenario_id"]], "comparison_context_hash": bundle["comparison_context_hash"]}
+                           for ref in bundle["candidate_refs"]], "results": results}
 
 
 @app.get("/api/scenarios/{scenario_id}", response_model=ScenarioBundle)

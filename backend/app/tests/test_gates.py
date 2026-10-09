@@ -4,6 +4,7 @@ import os
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
 from datetime import date
 from decimal import Decimal as D
 
@@ -51,6 +52,15 @@ class GateVerification(unittest.TestCase):
         ScenarioBundle.model_validate(result)
         self.assertEqual(len(result['input_hash']), 64)
         self.assertIn('hypothetical', result['risk_semantics'])
+
+    def test_snapshot_hash_excludes_creation_metadata_and_retry_is_idempotent(self):
+        first = self.client.post('/api/scenarios/evaluate', json={}).json()
+        retry = self.client.post('/api/scenarios/evaluate', json={}).json()
+        reopened = self.client.get(f"/api/scenarios/{first['scenario_id']}").json()
+        self.assertEqual(first['created_at'], retry['created_at'])
+        self.assertEqual(first['result_hash'], retry['result_hash'])
+        self.assertEqual(first['result_hash'], reopened['result_hash'])
+        self.assertEqual(first['comparison_context_hash'], reopened['comparison_context_hash'])
 
     def test_g1_db_records_sources_and_chronological_loan(self):
         for borrower in self.client.get('/api/borrowers').json():
@@ -239,8 +249,23 @@ class GateVerification(unittest.TestCase):
     def test_g4_both_actions_same_shock_and_full_schedule(self):
         request = {'overrides':{'heatwave_days':4}}
         stress = self.client.post('/api/scenarios/evaluate',json=request).json()
-        candidates = self.client.post('/api/interventions/evaluate',json=request).json()['candidates']
+        comparison = self.client.post('/api/interventions/evaluate',json=request).json()
+        candidates = comparison['candidates']
         self.assertEqual(len(candidates),2)
+        self.assertEqual(comparison['comparison_context_hash'], stress['comparison_context_hash'])
+        self.assertEqual(comparison['climate_path_hash'], stress['frozen_context']['climate_paths']['hash'])
+        self.assertEqual(len(comparison['candidate_refs']), 2)
+        self.assertEqual(comparison['baseline_ref']['result'], 'baseline')
+        self.assertEqual(comparison['stress_ref']['result'], 'stress')
+        reopened_comparison = self.client.get(f"/api/comparison-bundles/{comparison['bundle_id']}").json()
+        self.assertEqual(reopened_comparison['bundle_hash'], comparison['bundle_hash'])
+        self.assertEqual(len(reopened_comparison['results']), 3)
+        duplicate = self.client.post('/api/interventions/evaluate',json=request).json()
+        self.assertEqual(duplicate['bundle_id'], comparison['bundle_id'])
+        changed = self.client.post('/api/interventions/evaluate',json={'overrides':{'heatwave_days':6}}).json()
+        self.assertNotEqual(changed['bundle_id'], comparison['bundle_id'])
+        self.assertEqual(changed['supersedes_bundle_id'], comparison['bundle_id'])
+        self.assertEqual(self.client.get(f"/api/comparison-bundles/{comparison['bundle_id']}").json()['bundle_hash'], comparison['bundle_hash'])
         for bundle in candidates:
             action = bundle['stress_with_action']
             self.assertEqual(bundle['comparison_context_hash'],stress['comparison_context_hash'])
@@ -290,6 +315,26 @@ class GateVerification(unittest.TestCase):
         self.assertEqual(restored['as_of'], '2026-10-09')
         self.assertEqual(restored['overrides']['rainfall_change_pct'], 0)
         self.assertIsNone(restored['overrides']['irrigation_fraction'])
+
+    def test_retired_evaluator_reopens_stored_result_with_clear_stale_status(self):
+        current = self.client.post('/api/scenarios/evaluate',json={'overrides':{'heatwave_days':4}}).json()
+        old = dict(current)
+        old['scenario_id'] = 'retired-engine-fixture'
+        old['source_versions'] = {**old['source_versions'], 'engine':'retired-engine-v0'}
+        save_scenario(old['scenario_id'], old['borrower_id'], old['input_hash'], old['scenario_request'], old)
+        reopened = self.client.get('/api/scenarios/retired-engine-fixture').json()
+        self.assertEqual(reopened['stress'], old['stress'])
+        self.assertEqual(reopened['snapshot_freshness'], 'stale')
+        self.assertIn('engine_version_changed', reopened['snapshot_stale_reasons'])
+
+    def test_changed_weather_snapshot_marks_saved_result_stale_without_recalculation(self):
+        saved = self.client.post('/api/scenarios/evaluate',json={'overrides':{'heatwave_days':4}}).json()
+        with patch('app.db.Path.read_bytes', return_value=b'new provider snapshot'):
+            reopened = self.client.get(f"/api/scenarios/{saved['scenario_id']}").json()
+        self.assertEqual(reopened['stress'], saved['stress'])
+        self.assertEqual(reopened['result_hash'], saved['result_hash'])
+        self.assertEqual(reopened['snapshot_freshness'], 'stale')
+        self.assertIn('source_snapshot_changed', reopened['snapshot_stale_reasons'])
 
     def test_g5_snapshot_freezes_custom_context_when_borrower_changes(self):
         request = {'as_of': '2026-11-06', 'overrides': {'irrigation_fraction': 0.8,

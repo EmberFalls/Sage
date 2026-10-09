@@ -729,10 +729,18 @@ def evaluate_scenario(req: ScenarioRequest) -> dict:
     if action:
         action["debt_cycle"] = _three_seasons(b, action, req, bridge_enabled=True)
     warnings = derive_debt_warnings(stress["debt_cycle"], stress, action)
+    path_definition = [{"path": i, "yield_multiplier_pct": i * 2, "price_multiplier_pct": i}
+                       for i in range(-10, 11)]
+    climate_path_hash = hashlib.sha256(json.dumps({"seed": DEMO_SEED, "paths": path_definition},
+        sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+    climate_snapshot_hash = hashlib.sha256(WEATHER_PATH.read_bytes()).hexdigest() if WEATHER_PATH.exists() else "unavailable"
     source_versions = {"demo_fixture": SOURCE_VERSION, "engine": ENGINE_VERSION,
                        "crop_calendar": CALENDAR_VERSION, "yield_rule": "stage-response-v3",
-                       "weather_fixture": "ERA5-2015-retained-full-archive", "warnings": WARNING_CONFIG["version"]}
-    frozen = {"borrower": _jsonable(b), "as_of": req.as_of.isoformat(), "seed": DEMO_SEED, "sources": source_versions}
+                       "weather_fixture": "ERA5-2015-retained-full-archive", "warnings": WARNING_CONFIG["version"],
+                       "weather_snapshot_hash": climate_snapshot_hash, "climate_path_hash": climate_path_hash}
+    frozen = {"borrower": _jsonable(b), "as_of": req.as_of.isoformat(), "timezone": "Asia/Kolkata",
+              "seed": DEMO_SEED, "climate_paths": {"count": len(path_definition), "hash": climate_path_hash},
+              "sources": source_versions}
     context = {**frozen, "overrides": req.overrides.model_dump()}
     canonical = lambda v: json.dumps(_jsonable(v), sort_keys=True, separators=(",", ":"), allow_nan=False)
     context_hash = hashlib.sha256(canonical(context).encode()).hexdigest()
