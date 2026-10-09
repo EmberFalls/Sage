@@ -13,3 +13,5 @@ frontend/dist/
 .env
 frontend/.env
 frontend/.npm-cache/
+backend/.env
+
