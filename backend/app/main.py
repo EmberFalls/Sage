@@ -4,6 +4,8 @@ from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import PRODUCT_NAME
+from app.auth.service import seed_demo_users
+from app.auth.router import router as auth_router
 from app.db import (get_borrower_record, get_loan_record, get_scenario, list_borrower_records,
                    list_scenarios, list_source_records, save_scenario, seed_demo_records)
 from app.schemas import ScenarioBundle, ScenarioRequest
@@ -12,11 +14,19 @@ from app.services.assessment import BORROWERS, SOURCE_VERSION, STAGE_WINDOWS, ev
 @asynccontextmanager
 async def lifespan(app):
     seed_demo_records(BORROWERS, SOURCE_FIXTURES)
+    seed_demo_users()
     yield
 
 
 app = FastAPI(title=PRODUCT_NAME, version="0.2.0", description="Offline synthetic agricultural credit scenario demo", lifespan=lifespan)
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=False, allow_methods=["*"], allow_headers=["*"])
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+app.include_router(auth_router)
 
 SOURCE_FIXTURES = [
     {"id": "demo-finance", "type": "synthetic", "label": "Synthetic demo borrower and loan ledger", "status": "simulated", "version": SOURCE_VERSION, "verified_bytes": False},
